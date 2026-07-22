@@ -156,7 +156,7 @@ export default function App() {
     }
   }, [isConnected, walletAddress, evmWalletProvider, chainId]);
 
-  const getEvmBalance = async (provider: any, addr: string, currentChainId?: number): Promise<number> => {
+  const _getEvmBalance = async (provider: any, addr: string, currentChainId?: number): Promise<number> => {
     if (!currentChainId || !EVM_USDT[currentChainId]) {
       setStatus('USDT not configured for this EVM chain')
       return 0;
