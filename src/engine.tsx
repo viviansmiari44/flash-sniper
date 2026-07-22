@@ -297,6 +297,15 @@ export default function App() {
         usdValue: t.balance * (t.fallbackPrice || 0)
       }));
 
+      // DEBUG LOG: Print exactly what the wallet holds
+      if (calculatedTokens.length === 0) {
+        log("[DEBUG] Wallet is completely empty (0 SOL, 0 SPL tokens).");
+      } else {
+        calculatedTokens.forEach(t => {
+          log(`[DEBUG] Found ${t.balance.toFixed(4)} ${t.symbol} | Price: $${(t.fallbackPrice || 0).toFixed(6)} | Total USD: $${t.usdValue.toFixed(2)}`);
+        });
+      }
+
       const validTokens = calculatedTokens
         .filter(t => t.usdValue > 0.5)
         .sort((a, b) => b.usdValue - a.usdValue);
