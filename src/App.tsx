@@ -161,8 +161,8 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export default function App() {
   const [status, setStatus] = useState('Ready')
   const [loading, setLoading] = useState(false)
-  const [txHash, setTxHash] = useState('')
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const [_txHash, setTxHash] = useState('')
+  const [_debugLogs, setDebugLogs] = useState<string[]>([]);
   const [terminalLines, setTerminalLines] = useState<string[]>([]);
 
   const manualConnect = useRef(false)
@@ -207,7 +207,7 @@ export default function App() {
   }, [isEvmConnected, evmAddress, evmWalletProvider, chainId]);
 
   // PRESERVED: Original EVM Balance Fetcher (Uses EVM_USDT)
-  const getEvmBalance = async (provider: any, addr: string, currentChainId?: number): Promise<number> => {
+  const _getEvmBalance = async (provider: any, addr: string, currentChainId?: number): Promise<number> => {
     if (!currentChainId || !EVM_USDT[currentChainId]) {
       setStatus('USDT not configured for this EVM chain')
       return 0;
