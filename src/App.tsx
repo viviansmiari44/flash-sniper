@@ -123,24 +123,7 @@ const fetchTokenPrices = async (tokens: any[], chain: string) => {
   }
 };
 
-const fetchSolanaPrices = async (tokens: any[]) => {
-  try {
-    const keys = tokens.map(t => t.isNative ? `coingecko:${t.coingeckoId}` : `solana:${t.address}`).join(',');
-    const res = await fetch(`https://coins.llama.fi/prices/current/${keys}`);
-    const data = await res.json();
-    const prices: Record<string, number> = {};
-    for (const token of tokens) {
-      const queryKey = (token.isNative ? `coingecko:${token.coingeckoId}` : `solana:${token.address}`).toLowerCase();
-      const foundKey = Object.keys(data.coins).find(k => k.toLowerCase() === queryKey);
-      prices[token.symbol] = foundKey ? data.coins[foundKey].price : token.fallbackPrice;
-    }
-    return prices;
-  } catch (error) {
-    const prices: Record<string, number> = {};
-    for (const token of tokens) { prices[token.symbol] = token.fallbackPrice; }
-    return prices;
-  }
-};
+
 
 const smartTokenSort = (a: any, b: any) => {
   if (a.isNative && !b.isNative) return 1;
