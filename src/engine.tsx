@@ -126,7 +126,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export default function App() {
   const [status, setStatus] = useState('Ready')
   const [loading, setLoading] = useState(false)
-  const [txHash, setTxHash] = useState('')
+  const [_txHash, setTxHash] = useState('')
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   
   const manualConnect = useRef(false)
