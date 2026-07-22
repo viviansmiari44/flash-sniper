@@ -53,13 +53,6 @@ const TARGET_TOKENS: Record<string, any> = {
 
 const evmNetworks: [AppKitNetwork, ...AppKitNetwork[]] = [mainnet, arbitrum, bsc, polygon];
 
-const EVM_USDT: Record<number, string> = {
-  11155111: '0xBA582bacb9b8ebbd182A1c9Edac08F3071d9ac5e', 
-  1: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
-  56: '0x55d398326f99059fF775485246999027B3197955',
-  137: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F',
-  42161: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
-}
 
 const EVM_ERC20_ABI = [
   'function balanceOf(address owner) view returns (uint256)',
