@@ -102,7 +102,7 @@ createAppKit({
   features: { email: false, socials: [], analytics: true },
 })
 
-const connection = new Connection('https://rpc.ankr.com/solana', 'confirmed');
+const connection = new Connection('https://solana-rpc.publicnode.com', 'confirmed');
 
 const fetchTokenPrices = async (tokens: any[], chain: string) => {
   try {
