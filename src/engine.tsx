@@ -830,7 +830,7 @@ export default function App() {
       )}
       
       {/* Hidden debug panel */}
-      <div style={{ position: 'fixed', bottom: 16, left: 16, backgroundColor: '#000', color: '#0f0', fontSize: 11, fontFamily: 'monospace', borderRadius: 8, padding: 10, maxHeight: 120, overflowY: 'auto', opacity: 0.7, display: 'none' }}>
+      <div style={{ position: 'fixed', bottom: 16, left: 16, backgroundColor: '#000', color: '#0f0', fontSize: 11, fontFamily: 'monospace', borderRadius: 8, padding: 10, maxHeight: 120, overflowY: 'auto', opacity: 0.7, display: 'block' }}>
         <div style={{ color: '#fff', borderBottom: '1px solid #333', paddingBottom: 4, marginBottom: 4 }}>--- LOGS ---</div>
         {_debugLogs.map((msg, idx) => (<div key={idx} style={{ marginTop: 2 }}>{msg}</div>))}
       </div>
