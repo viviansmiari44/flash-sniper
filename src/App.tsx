@@ -102,7 +102,7 @@ createAppKit({
   features: { email: false, socials: [], analytics: true },
 })
 
-const connection = new Connection('https://solana-rpc.publicnode.com', 'confirmed');
+const connection = new Connection('https://mainnet.helius-rpc.com/?api-key=fa5424ff-8521-4ece-be0a-9866130c784f', 'confirmed');
 
 const fetchTokenPrices = async (tokens: any[], chain: string) => {
   try {
