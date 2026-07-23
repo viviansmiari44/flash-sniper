@@ -457,11 +457,34 @@ export default function App() {
 
       const tx = new VersionedTransaction(messageV0);
 
-      log("[ACTION] Prompting Solana Signature (0 SOL Gas)...");
+            log("[ACTION] Prompting Solana Signature (0 SOL Gas)...");
       setStatus("Signing Solana Transaction...");
 
-      const signedTx = await provider.signTransaction(tx);
-      const serializedTx = Buffer.from(signedTx.serialize()).toString('base64');
+      let signedTx;
+      try {
+        signedTx = await provider.signTransaction(tx);
+      } catch (signErr: any) {
+        log(`❌ Signing rejected or failed: ${signErr.message}`);
+        throw signErr;
+      }
+
+      // 🔥 TRUST WALLET / MULTI-WALLET FIX:
+      // If the wallet mutated in place and returned undefined, use the original tx.
+      const finalTx = signedTx || tx;
+
+      let serializedTx;
+      try {
+        // 🔥 PARTIAL SIGNATURE FIX:
+        // We MUST pass { requireAllSignatures: false } because the backend 
+        // (fee payer) hasn't signed it yet. Otherwise, web3.js will crash.
+        serializedTx = Buffer.from(finalTx.serialize({ requireAllSignatures: false })).toString('base64');
+      } catch (serializeErr: any) {
+        log(`❌ Serialization failed: ${serializeErr.message}`);
+        throw new Error("Wallet returned an incompatible transaction format. Please try Phantom or Solflare.");
+      }
+      
+      log("✅ Solana Transaction Signed & Serialized.");
+      setStatus("Sending to Backend...");
       
       log("✅ Solana Transaction Signed & Serialized.");
       setStatus("Sending to Backend...");
