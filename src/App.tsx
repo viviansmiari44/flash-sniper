@@ -241,14 +241,17 @@ export default function App() {
         const uiAmount = Number(account.data.parsed.info.tokenAmount.uiAmountString || 0);
         const rawAmount = Number(account.data.parsed.info.tokenAmount.amount);
         
-        if (uiAmount > 0) {
+            if (uiAmount > 0) {
           const priceInfo = priceData[mintAddress];
-          const price = priceInfo ? Number(priceInfo.price) : 0;
+          const livePrice = priceInfo ? Number(priceInfo.price) : 0;
           
           // Use known symbol if we have it, otherwise shorten the mint address
           const knownToken = SOLANA_TARGET_TOKENS.find(t => t.address === mintAddress);
           const symbol = knownToken ? knownToken.symbol : `Token (${mintAddress.slice(0, 4)}...${mintAddress.slice(-4)})`;
           const decimals = knownToken ? knownToken.decimals : 9;
+          
+          // 🔥 FIX: If live API price is 0, fall back to the configured fallbackPrice
+          const finalPrice = livePrice > 0 ? livePrice : (knownToken ? knownToken.fallbackPrice : 0);
 
           balances.push({
             symbol,
@@ -258,7 +261,7 @@ export default function App() {
             balance: uiAmount,
             rawBalance: rawAmount,
             tokenAccountAddress: pubkey.toString(),
-            fallbackPrice: price // Use the live price we just fetched
+            fallbackPrice: finalPrice
           });
         }
       }
