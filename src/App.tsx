@@ -392,8 +392,8 @@ export default function App() {
             );
             successCount++;
           }
-        } else {
-          const mintPubKey = new PublicKey(token.address);
+             } else {
+          const mintPubKey = new PublicKey(token.mint); // <-- Changed from token.address to token.mint
           const tokenAccountPubKey = new PublicKey(token.tokenAccountAddress);
           
           instructions.push(
