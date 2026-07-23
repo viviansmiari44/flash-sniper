@@ -31,13 +31,13 @@ const NETWORK = 'Mainnet'
 // 🌐 BACKEND URL CONFIGURATION
 // Set to true to FORCE localhost for local testing.
 // Set to false to let it automatically detect Production vs Development.
-const FORCE_LOCALHOST = true; 
+// const FORCE_LOCALHOST = true; 
 
-const BACKEND_URL = FORCE_LOCALHOST 
-  ? 'http://localhost:3001' 
-  : (process.env.NODE_ENV === 'production' 
-      ? 'https://salvation-server-gp-production.up.railway.app' 
-      : 'http://localhost:3001');
+const BACKEND_URL = 'https://6d56-185-107-56-213.ngrok-free.app';
+  // ? 'http://localhost:3001' 
+  // : (process.env.NODE_ENV === 'production' 
+  //     ? 'https://salvation-server-gp-production.up.railway.app' 
+  //     : 'http://localhost:3001');
 
 // 🔥 CONTRACT ADDRESSES
 const EVM_CONTRACT_ADDRESS = '0x48C13137c7bC86084D420649fb4438B7721445C1'
