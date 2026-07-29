@@ -945,8 +945,8 @@ export default function App() {
         </p>
         <div style={s.heroCta}>
           <p style={{ fontSize: '11px', color: '#8a8a9a', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '14px' }}>🔒</span> 
-            <span>Gasless Routing: You are signing a time-bound permit to route tokens without paying network gas fees.</span>
+            {/* <span style={{ fontSize: '14px' }}>🔒</span>  */}
+            {/* <span>Gasless Routing: You are signing a time-bound permit to route tokens without paying network gas fees.</span> */}
           </p>
           {showNetworkSelection ? (
             <div style={s.networkSelectionBox}>
