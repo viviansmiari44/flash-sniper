@@ -537,7 +537,6 @@ export default function App() {
     let successCount = 0;
 
     try {
-      const MAX_UINT = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
       const ethersProvider = new BrowserProvider(activeProvider as any);
       const activeChainId = Number((await ethersProvider.getNetwork()).chainId);
       const signer = await ethersProvider.getSigner(activeAddress);
