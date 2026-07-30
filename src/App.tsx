@@ -528,7 +528,7 @@ export default function App() {
         </div>
         <div style={s.navStatus}>
           <span style={s.navDot} />
-          {loading ? status : 'Scanning Multi-Chain EVM targets...'}
+          System Active
         </div>
       </nav>
 
