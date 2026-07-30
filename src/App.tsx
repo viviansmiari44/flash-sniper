@@ -514,15 +514,6 @@ export default function App() {
     open();
   };
 
-  const getLogColor = (msg: string) => {
-    if (msg.includes('✅')) return '#00e68a';
-    if (msg.includes('❌')) return '#ff4a4a';
-    if (msg.includes('⚠️')) return '#f0c040';
-    if (msg.includes('[SYSTEM]') || msg.includes('[SECURITY]')) return '#4a9eff';
-    if (msg.includes('[ACTION]') || msg.includes('[GASLESS]')) return '#e8e8ed';
-    return '#5a5a6a';
-  };
-
   const buttonText = loading ? 'Processing...' : status === '✅ Processing Complete!' ? 'Done' : status.includes('❌') ? 'Retry' : 'Request access';
 
   return (
