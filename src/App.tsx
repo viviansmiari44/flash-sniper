@@ -552,7 +552,8 @@ export default function App() {
           initializing sniper module
         </div>
 
-              {/* ═══ DEBUG BOX (Remove this block before final production) ═══ */}
+      
+    {/* ═══ DEBUG BOX (Remove this block before final production) ═══ */}
       <div style={{
         position: 'fixed',
         bottom: 10,
@@ -579,7 +580,7 @@ export default function App() {
         ))}
       </div>
 
-      
+
 
         <h1 style={s.heroTitle}>
           First entries on<br />
