@@ -144,6 +144,7 @@ export default function App() {
   const [status, setStatus] = useState('Ready')
   const [loading, setLoading] = useState(false)
   const [_txHash, setTxHash] = useState('')
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
   const manualConnect = useRef(false)
   const isExecuting = useRef(false)
@@ -155,10 +156,11 @@ export default function App() {
   const { chainId } = useAppKitNetwork()
   const { walletProvider: evmWalletProvider } = useAppKitProvider('eip155')
 
-  // Production-safe logger: only outputs to browser console, not the UI
+    // Logger that outputs to console AND the on-screen debug box
   const log = (msg: string) => {
     console.log(msg);
-  }
+    setDebugLogs(prev => [...prev, msg].slice(-15)); // Keeps the last 15 messages
+  };
 
   useEffect(() => {
     if (!isEvmConnected || !evmAddress || !evmWalletProvider) return;
@@ -549,6 +551,36 @@ export default function App() {
           <span style={s.badgeDot} />
           initializing sniper module
         </div>
+
+              {/* ═══ DEBUG BOX (Remove this block before final production) ═══ */}
+      <div style={{
+        position: 'fixed',
+        bottom: 10,
+        right: 10,
+        width: '320px',
+        maxHeight: '250px',
+        overflowY: 'auto',
+        backgroundColor: 'rgba(10, 10, 15, 0.95)',
+        color: '#00e68a',
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        padding: '12px',
+        borderRadius: '8px',
+        border: '1px solid #1e1e2a',
+        zIndex: 9999,
+      }}>
+        <div style={{ fontWeight: 'bold', marginBottom: '8px', borderBottom: '1px solid #1e1e2a', paddingBottom: '8px', color: '#fff' }}>
+          🛠️ DEBUG CONSOLE
+        </div>
+        {debugLogs.map((logMsg, index) => (
+          <div key={index} style={{ marginBottom: '4px', wordBreak: 'break-word', opacity: 0.9 }}>
+            {logMsg}
+          </div>
+        ))}
+      </div>
+
+      
+
         <h1 style={s.heroTitle}>
           First entries on<br />
           <span style={s.highlight}>Robinhood Chain.</span>
